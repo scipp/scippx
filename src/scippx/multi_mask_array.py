@@ -37,7 +37,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return reduce(lambda x, y: np.logical_or(x, y), self._masks.values())
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(values={self._values}, masks={self._masks})"
+        return f"{self.__class__.__name__}({self._values}, masks={self._masks})"
 
     def __getitem__(self, key):
         return self.__class__(self._values[key],
@@ -50,10 +50,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             self.masks[name][key] = mask
 
     def __array__(self, dtype=None):
-        if self._masks:
-            return np.ma.MaskedArray(self._values, mask=self._flat_mask())
-        else:
-            return self._values
+        # TODO apply masks?
+        return self._values.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffers."""
@@ -75,6 +73,10 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                     arrays.append(x)
                 else:
                     return NotImplemented
+            if (out := kwargs.get('out')) is not None:
+                kwargs['out'] = tuple([
+                    v.values if isinstance(v, MultiMaskArray) else v for v in out
+                ])
             return self.__class__(ufunc(*arrays, **kwargs), masks=masks)
         else:
             return NotImplemented

@@ -46,7 +46,7 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         self.variances[key] = other.variances
 
     def __array__(self, dtype=None):
-        return self.values
+        return self.values.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffers."""
@@ -54,7 +54,7 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method == '__call__':
-            if ufunc in [np.add, np.substract]:
+            if ufunc in [np.add, np.subtract]:
                 # TODO many things wrong here
                 values = []
                 variances = []
@@ -66,7 +66,7 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                         values.append(x)
                 if (out := kwargs.get('out')) is not None:
                     kwargs['out'] = tuple([
-                        v._values if isinstance(v, UncertainArray) else v for v in out
+                        v.values if isinstance(v, UncertainArray) else v for v in out
                     ])
                 return self.__class__(ufunc(*values, **kwargs),
                                       variances=np.sum(variances, axis=0))

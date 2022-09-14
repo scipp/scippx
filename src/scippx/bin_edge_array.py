@@ -55,7 +55,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array__(self, dtype=None):
         # TODO Should this return midpoints? Or self.left?
-        return self._values
+        return self._values.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffer."""
