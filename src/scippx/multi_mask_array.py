@@ -74,12 +74,25 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                 else:
                     return NotImplemented
             if (out := kwargs.get('out')) is not None:
-                kwargs['out'] = tuple([
-                    v.values if isinstance(v, MultiMaskArray) else v for v in out
-                ])
+                kwargs['out'] = tuple(
+                    [v.values if isinstance(v, MultiMaskArray) else v for v in out])
             return self.__class__(ufunc(*arrays, **kwargs), masks=masks)
         else:
             return NotImplemented
 
-    def __array_function__(self):
-        pass
+    def __array_function__(self, func, types, args, kwargs):
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        # TODO handle more args, this is for concatenate
+        values = func([x.values for x in args[0]], **kwargs)
+        masks = {}
+        for name in self.masks:
+            masks[name] = func([x.masks[name] for x in args[0]], **kwargs)
+        return self.__class__(values, masks)
+
+    def __getattr__(self, item):
+        try:
+            return getattr(self.values, item)
+        except AttributeError:
+            raise AttributeError("Neither MultiMaskArray object nor its data ({}) "
+                                 "has attribute '{}'".format(self.values, item))
