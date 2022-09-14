@@ -33,7 +33,6 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin, DaskMethodsMixin):
     def __init__(self, values, variances):
         self._values = values
         self._variances = variances
-        print(f'init {len(self)}')
 
     @property
     def shape(self):
@@ -98,18 +97,48 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin, DaskMethodsMixin):
         else:
             return NotImplemented
 
-    def __array_function__(self):
-        pass
+    def __array_function__(self, func, types, args, kwargs):
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        # TODO handle more args, this is for concatenate
+        values = func([x.values for x in args[0]], **kwargs)
+        variances = func([x.variances for x in args[0]], **kwargs)
+        return self.__class__(values, variances)
+
+    @property
+    def _variables(self):
+        return {'values':self.values, 'variances':self.variances}
+
+    @property
+    def chunks(self):
+        return self.values.chunks
 
     def __dask_graph__(self):
-        print('__dask_graph__')
+        graphs = {k: v.__dask_graph__() for k, v in self._variables.items()}
+        graphs = {k: v for k, v in graphs.items() if v is not None}
+        if not graphs:
+            return None
+        else:
+            try:
+                from dask.highlevelgraph import HighLevelGraph
+
+                return HighLevelGraph.merge(*graphs.values())
+            except ImportError:
+                from dask import sharedict
+
+                return sharedict.merge(*graphs.values())
         graph = {}
         graph.update(self.values.__dask_graph__())
         graph.update(self.variances.__dask_graph__())
         return graph
 
     def __dask_keys__(self):
-        print('__dask_keys__')
+        import dask
+        return [
+            v.__dask_keys__()
+            for v in self._variables.values()
+            if dask.is_dask_collection(v)
+        ]
         return [self.values.__dask_keys__(), self.variances.__dask_keys__()]
 
     @property
@@ -121,7 +150,6 @@ class UncertainArray(numpy.lib.mixins.NDArrayOperatorsMixin, DaskMethodsMixin):
         return dask_array.Array.__dask_scheduler__
 
     def __dask_postcompute__(self):
-        print('__dask_postcompute__')
         func, val_args = self.values.__dask_postcompute__()
         func, var_args = self.variances.__dask_postcompute__()
         return self._dask_finalize, (func, val_args, var_args)
