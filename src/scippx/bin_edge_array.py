@@ -4,13 +4,13 @@
 import numpy as np
 import numpy.lib.mixins
 from copy import copy, deepcopy
-from functools import reduce
 
 
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, values):
         assert values.ndim == 1  # TODO
+        # TODO check increasing
         self._values = values
 
     @property
@@ -45,6 +45,8 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return f"{self.__class__.__name__}(values={self._values})"
 
     def __getitem__(self, key):
+        if isinstance(key, tuple):
+            key = key[0]  # TODO
         if isinstance(key, int):
             # TODO shape? return class Interval?
             return self.__class__(self._values[key:key + 2])
@@ -52,6 +54,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return self.__class__(self._values[slice(key.start, key.stop + 1)])
 
     def __array__(self, dtype=None):
+        # TODO Should this return midpoints? Or self.left?
         return self._values
 
     def __copy__(self):
@@ -59,7 +62,6 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(copy(self._values))
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        print(ufunc, method, inputs, kwargs)
         if method == '__call__':
             arrays = []
             for x in inputs:
