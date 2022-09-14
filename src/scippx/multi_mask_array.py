@@ -39,6 +39,11 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
         return f"{self.__class__.__name__}(values={self._values}, masks={self._masks})"
 
+    def __getitem__(self, key):
+        return self.__class__(self._values[key],
+                              {name: mask[key]
+                               for name, mask in self.masks.items()})
+
     def __array__(self, dtype=None):
         if self._masks:
             return np.ma.MaskedArray(self._values, mask=self._flat_mask())
