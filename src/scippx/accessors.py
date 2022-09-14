@@ -16,7 +16,7 @@ class MaskAccessor:
         return xr.Variable(dims=self._obj.dims, data=self._obj.data.masks[name])
 
 
-@xr.register_dataarray_accessor('qsel')
+@xr.register_dataarray_accessor('qloc')
 class IndexAccessor:
 
     def __init__(self, xarray_obj):
@@ -27,3 +27,9 @@ class IndexAccessor:
             if self._obj.coords[dim].data.units != q.units:
                 raise KeyError("Key has wrong unit.")
         return self._obj.loc[{dim: q.magnitude for dim, q in sel.items()}]
+
+    def __setitem__(self, sel: Dict[str, pint.Quantity], value):
+        for dim, q in sel.items():
+            if self._obj.coords[dim].data.units != q.units:
+                raise KeyError("Key has wrong unit.")
+        self._obj.loc[{dim: q.magnitude for dim, q in sel.items()}] = value

@@ -24,3 +24,9 @@ def test_set_value_of_mask_slice(masked_1d_array):
     assert da.masks['mask'].values[1] == True
     da[{'x': 1}].masks['mask'][()] = False
     assert da.masks['mask'].values[1] == False
+
+
+def test_setitem_with_masked_data(masked_1d_array):
+    da = masked_1d_array
+    da[{'x': 1}] = da[{'x': 2}]
+    assert da.values[1] == 2
