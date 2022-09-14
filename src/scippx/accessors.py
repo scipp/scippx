@@ -29,7 +29,21 @@ class IndexAccessor:
         return self._obj.loc[{dim: q.magnitude for dim, q in sel.items()}]
 
     def __setitem__(self, sel: Dict[str, pint.Quantity], value):
+        # TODO We could support indexing without and index here, as in scipp
         for dim, q in sel.items():
             if self._obj.coords[dim].data.units != q.units:
                 raise KeyError("Key has wrong unit.")
         self._obj.loc[{dim: q.magnitude for dim, q in sel.items()}] = value
+
+
+@xr.register_dataarray_accessor('qcoords')
+class CoordsAccessor:
+
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
+
+    def __getitem__(self, name: str):
+        return self._obj.coords[name].variable
+
+    def __setitem__(self, name: str, value):
+        self._obj.coords[name] = value
