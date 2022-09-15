@@ -2,8 +2,29 @@ import xarray as xr
 import pytest
 
 
+def test_binary_ops_are_not_associative_given_non_range_slices():
+    da = xr.DataArray(dims=['x'], data=[1, 2, 3], coords={'x': ('x', [1, 2, 3])})
+    # Turns x into coord without index
+    a = da[0]
+    b = da[1]
+    c = da[2]
+    a_bc = a + (b + c)
+    ab_c = (a + b) + c
+    assert not a_bc.equals(ab_c)
+
+
+def test_binary_ops_are_not_associative_given_coords_without_indexes():
+    da = xr.DataArray(dims=['x'], data=[1, 2, 3, 4], coords={'x2': ('x', [1, 2, 3, 4])})
+    a = da[0:2]
+    b = da[1:3]
+    c = da[2:4]
+    a_bc = a + (b + c)
+    ab_c = (a + b) + c
+    assert not a_bc.equals(ab_c)
+
+
 def test_binary_ops_are_not_associative_given_coords_without_index():
-    da = xr.DataArray(dims=['x'], data=[1, 2, 3], coords={'x2': ('x', [1, 2, 3])})
+    da = xr.DataArray(dims=['x'], data=[1, 2, 3], coords={'x': ('x', [1, 2, 3])})
     a = da[0]
     b = da[1]
     c = da[2]
