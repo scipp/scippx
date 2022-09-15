@@ -11,6 +11,8 @@ def test_binary_ops_are_not_associative_given_non_range_slices():
     a_bc = a + (b + c)
     ab_c = (a + b) + c
     assert not a_bc.equals(ab_c)
+    assert a_bc.coords['x'].equals(a.coords['x'])
+    assert ab_c.coords['x'].equals(c.coords['x'])
 
 
 def test_binary_ops_are_not_associative_given_coords_without_indexes():
@@ -21,6 +23,8 @@ def test_binary_ops_are_not_associative_given_coords_without_indexes():
     a_bc = a + (b + c)
     ab_c = (a + b) + c
     assert not a_bc.equals(ab_c)
+    assert a_bc.coords['x2'].equals(a.coords['x2'])
+    assert ab_c.coords['x2'].equals(c.coords['x2'])
 
 
 def test_binary_ops_are_not_associative_given_coords_without_index():

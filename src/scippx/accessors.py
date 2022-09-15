@@ -12,6 +12,9 @@ class MaskAccessor:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
+    def __len__(self):
+        return len(self._obj.data.masks)
+
     def __getitem__(self, name: str):
         return xr.Variable(dims=self._obj.dims, data=self._obj.data.masks[name])
 
