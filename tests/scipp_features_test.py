@@ -1,6 +1,7 @@
 import numpy as np
 import scippx.scipp as sc
 import pint
+import pytest
 
 
 def test_linspace():
@@ -37,3 +38,17 @@ def test_array_with_non_dimension_coord():
     # Fails because da.coords['x2'] has same coords as da:
     # assert da.coords['x2'].equals(x2)
     assert da.scipp.coords['x2'].equals(x2)
+
+
+def test_array_with_dimension_coord_label_based_lookup_raises_since_no_index():
+    x = sc.linspace('x', 0.1, 0.2, 4, units='s')
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    with pytest.raises(KeyError):
+        da.loc[0.1]
+
+
+def test_array_scipp_quantity_lookup():
+    x = sc.linspace('x', 0.1, 0.2, 4, units='s')
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    sel = da.scipp[('x', 0.1 * pint.Unit('s'))]
+    assert sel.equals(da[0:1])

@@ -30,13 +30,14 @@ def array(dims, values, *, variances=None, units=default_unit, coords=None, mask
     data = values if variances is None else UncertainArray(values, variances)
     data = MultiMaskArray(data, masks=masks if masks is not None else {})
     data = data if units is None else pint.Quantity(data, units)
-    # Build indexes
-    tmp = xr.DataArray(dims=dims, data=data, coords=coords)
-    # Set coords with custom indexes to avoid stripping of units
-    return xr.DataArray(data=tmp.variable,
-                        coords={} if coords is None else coords,
-                        indexes=tmp.indexes,
-                        fastpath=True)
+    data = xr.Variable(dims=dims, data=data)
+    coords = {} if coords is None else coords
+    coords = {
+        name: coord if isinstance(coord, xr.Variable) else coord.variable
+        for name, coord in coords.items()
+    }
+    # Set coords without indexes to avoid stripping of units
+    return xr.DataArray(data=data, coords=coords, indexes={}, fastpath=True)
 
 
 
@@ -62,3 +63,11 @@ class Scipp:
     @property
     def coords(self):
         return Coords(self._obj)
+
+    def __getitem__(self, key):
+        dim, val = key
+        if isinstance(val, pint.Quantity):
+            coord = self._obj.coords[dim].data
+            if val.units != coord.units:
+                raise KeyError("Wrong unit")
+            return self._obj[{dim:np.flatnonzero(coord.magnitude == val.magnitude)}]

@@ -69,10 +69,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                             masks[key] = np.logical_or(masks[key], mask)
                         else:
                             masks[key] = mask
-                elif isinstance(x, np.ndarray):
-                    arrays.append(x)
                 else:
-                    return NotImplemented
+                    arrays.append(x)
             if (out := kwargs.get('out')) is not None:
                 kwargs['out'] = tuple(
                     [v.values if isinstance(v, MultiMaskArray) else v for v in out])
@@ -83,8 +81,15 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __array_function__(self, func, types, args, kwargs):
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
-        # TODO handle more args, this is for concatenate
-        values = func([x.values for x in args[0]], **kwargs)
+        # TODO handle more args, this works for concatenate and broadcast_arrays
+        def values(arg):
+            if isinstance(arg, MultiMaskArray):
+                return arg.values
+            if isinstance(arg, list):
+                return [values(x) for x in arg]
+            return arg
+        arrays = tuple([values(x) for x in args])
+        values = func(*arrays, **kwargs)
         masks = {}
         for name in self.masks:
             masks[name] = func([x.masks[name] for x in args[0]], **kwargs)
