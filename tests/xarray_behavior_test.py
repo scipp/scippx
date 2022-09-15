@@ -1,4 +1,6 @@
+import numpy as np
 import xarray as xr
+import pint
 import pytest
 
 
@@ -57,3 +59,16 @@ def test_binary_op_without_index_and_mismatching_length_raises():
     da = xr.DataArray(dims=['x'], data=[1, 2, 3], coords={'x2': ('x', [1, 2, 3])})
     with pytest.raises(ValueError):
         da[0:1] + da[1:3]
+
+
+@pytest.mark.filterwarnings(
+    "ignore:elementwise comparison failed; this will raise an error in the future.:DeprecationWarning"
+)
+def test_equals_ignores_units_since_it_only_compares_values():
+    a = xr.Variable(dims='x', data=np.arange(4))
+    b = xr.Variable(dims='x', data=pint.Quantity(np.arange(4), 'm'))
+    assert not b.equals(a)  # ok
+    assert not a.equals(b)  # ok
+    da = xr.DataArray(dims='x', data=a, coords={'x': a})
+    assert not b.equals(da.coords['x'].variable)  # ok
+    assert da.coords['x'].variable.equals(b)  # bad
