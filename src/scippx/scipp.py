@@ -30,4 +30,35 @@ def array(dims, values, *, variances=None, units=default_unit, coords=None, mask
     data = values if variances is None else UncertainArray(values, variances)
     data = MultiMaskArray(data, masks=masks if masks is not None else {})
     data = data if units is None else pint.Quantity(data, units)
-    return xr.DataArray(dims=dims, data=data, coords=coords)
+    # Build indexes
+    tmp = xr.DataArray(dims=dims, data=data, coords=coords)
+    # Set coords with custom indexes to avoid stripping of units
+    return xr.DataArray(data=tmp.variable,
+                        coords={} if coords is None else coords,
+                        indexes=tmp.indexes,
+                        fastpath=True)
+
+
+
+class Coords:
+
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
+
+    def __getitem__(self, name: str):
+        # Wrap in DataArray to avoid returning index, which has weird behavior
+        return xr.DataArray(self._obj.coords[name].variable)
+
+    def __setitem__(self, name: str, value):
+        self._obj.coords[name] = value
+
+
+@xr.register_dataarray_accessor('scipp')
+class Scipp:
+
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
+
+    @property
+    def coords(self):
+        return Coords(self._obj)

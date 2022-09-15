@@ -64,11 +64,12 @@ def test_binary_op_without_index_and_mismatching_length_raises():
 @pytest.mark.filterwarnings(
     "ignore:elementwise comparison failed; this will raise an error in the future.:DeprecationWarning"
 )
-def test_equals_ignores_units_since_it_only_compares_values():
+def test_equals_of_index_coord_ignores_units_since_it_only_compares_values():
     a = xr.Variable(dims='x', data=np.arange(4))
     b = xr.Variable(dims='x', data=pint.Quantity(np.arange(4), 'm'))
     assert not b.equals(a)  # ok
     assert not a.equals(b)  # ok
     da = xr.DataArray(dims='x', data=a, coords={'x': a})
     assert not b.equals(da.coords['x'].variable)  # ok
+    assert not xr.DataArray(da.coords['x'].variable).equals(b)  # ok
     assert da.coords['x'].variable.equals(b)  # bad
