@@ -1,4 +1,5 @@
 # Adapted from https://notebooksharing.space/view/48ad86aed90f7588c9a475be6747528d87f975cb3317e5bd94265ffaa5a2478f#displayOptions=
+# Needs benbovy/add-set-xindex-and-drop-indexes
 
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ class ArrayIndex(Index):
         name, var = next(iter(variables.items()))
 
         # TODO: use `var.data` instead? (allow lazy/duck arrays)
-        return cls(var.values, var.dims[0], name)
+        return cls(var.data, var.dims[0], name)
 
     @classmethod
     def concat(
@@ -121,10 +122,13 @@ class ArrayIndex(Index):
 
         if isinstance(label, slice):
             # TODO: what exactly do we want to do here?
+            _ = self.array[0] + label.start  # Duck compatibility check, e.g., unit
+            _ = self.array[0] + label.stop  # Duck compatibility check, e.g., unit
             start = np.argmax(self.array == label.start)
             stop = np.argmax(self.array == label.stop)
             indexer = slice(start, stop)
         elif is_scalar(label):
+            _ = self.array[0] + label  # Duck compatibility check, e.g., unit
             indexer = np.argmax(self.array == label)
         else:
             # TODO: other label types we want to support (n-d array-like, etc.)
