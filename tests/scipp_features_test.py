@@ -92,3 +92,5 @@ def test_array_with_edges():
     da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
     # TODO Figure out how to make ArrayIndex work with BinEdgeArray, in particular
     # how to handle comparisons or things such as np.nonzero and np.argmax
+    # Probably this needs an API addition that lets a duck array modify and indexer
+    # assert da.sel(x=0.25 * sc.Unit('s')).equals(da[1])

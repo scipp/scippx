@@ -25,6 +25,10 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self._starts.ndim
 
     @property
+    def sizes(self):
+        return self._stops - self._starts
+
+    @property
     def values(self):
         if self.shape == ():
             return self._content[slice(self._starts, self._stops)]
@@ -34,59 +38,44 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return f"{self.__class__.__name__}(starts={self._starts},...)"
 
     def __getitem__(self, key):
-        return self.__class__(starts=self._starts[key],
-                              stops=self._stops[key],
+        return self.__class__(starts=np.asarray(self._starts[key]),
+                              stops=np.asarray(self._stops[key]),
                               axis=self._axis,
                               content=self._content)
 
+    def __setitem__(self, key, other):
+        if not isinstance(other, ListArray):
+            raise NotImplementedError()
+        if not np.array_equal(self[key].sizes, other.sizes):
+            raise ValueError("mismatching bin sizes")
+        sel = self[key]
+        for start, stop, ostart, ostop in zip(np.ravel(sel._starts),
+                                              np.ravel(sel._stops),
+                                              np.ravel(other._starts),
+                                              np.ravel(other._stops)):
+            self._content[slice(start, stop)] = other._content[slice(ostart, ostop)]
+
     def __array__(self, dtype=None):
         raise NotImplementedError()
-        return self._values.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffers."""
-        return self.__class__(starts=copy(self._starts),
-                              stops=copy(self._stops),
-                              axis=self._axis,
-                              content=deepcopy(self._content))
+        sizes = self.sizes
+        stops = np.reshape(np.cumsum(np.ravel(sizes)), sizes.shape)
+        starts = stops - sizes
+        size = np.sum(sizes)
+        # TODO See uptream efforts for API to create correct duck array
+        # TODO Support non-1D content
+        content = np.empty_like(self._content, shape=(size, ))
+        out = self.__class__(starts=starts,
+                             stops=stops,
+                             axis=self._axis,
+                             content=content)
+        out[...] = self
+        return out
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         raise NotImplementedError()
-        if method == '__call__':
-            arrays = []
-            masks = {}
-            for x in inputs:
-                if isinstance(x, MultiMaskArray):
-                    arrays.append(x._values)
-                    for key, mask in x.masks.items():
-                        if key in masks:
-                            masks[key] = np.logical_or(masks[key], mask)
-                        else:
-                            masks[key] = mask
-                else:
-                    arrays.append(x)
-            if (out := kwargs.get('out')) is not None:
-                kwargs['out'] = tuple(
-                    [v.values if isinstance(v, MultiMaskArray) else v for v in out])
-            return self.__class__(ufunc(*arrays, **kwargs), masks=masks)
-        else:
-            return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
         raise NotImplementedError()
-        if not all(issubclass(t, self.__class__) for t in types):
-            return NotImplemented
-        # TODO handle more args, this works for concatenate and broadcast_arrays
-        def values(arg):
-            if isinstance(arg, MultiMaskArray):
-                return arg.values
-            if isinstance(arg, list):
-                return [values(x) for x in arg]
-            return arg
-
-        arrays = tuple([values(x) for x in args])
-        values = func(*arrays, **kwargs)
-        masks = {}
-        for name in self.masks:
-            masks[name] = func([x.masks[name] for x in args[0]], **kwargs)
-        return self.__class__(values, masks)
