@@ -2,6 +2,7 @@
 # Copyright (c) 2022 Scipp contributors (https://github.com/scipp)
 # @author Simon Heybrock
 from .array_index import ArrayIndex
+from .bin_edge_array import BinEdgeArray
 from .multi_mask_array import MultiMaskArray
 from .uncertain_array import UncertainArray
 import xarray as xr
@@ -24,6 +25,14 @@ def linspace(dim, start, stop, num, *, endpoint=True, units=default_unit, dtype=
     if (units := _units_for_dtype(units, dtype)) is not None:
         data = pint.Quantity(data, units=units)
     return xr.DataArray(dims=(dim, ), data=data)
+
+
+def as_edges(da, dim=None):
+    dim = dim if dim is not None else da.dims[-1]
+    edges = BinEdgeArray(da.values)
+    if isinstance(da.data, pint.Quantity):
+        edges = pint.Quantity(edges, units=da.data.units)
+    return xr.DataArray(dims=da.dims, data=edges)
 
 
 def array(dims, values, *, variances=None, units=default_unit, coords=None, masks=None):

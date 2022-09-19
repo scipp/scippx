@@ -77,3 +77,17 @@ def test_coords_support_inplace_modification_and_get_reflected_in_index():
     assert da.sel(x=np.array(0.2) * pint.Unit('s')).equals(da[1])
     da.coords['x'] *= 2
     assert da.sel(x=np.array(0.2) * pint.Unit('s')).equals(da[0])
+
+
+def test_as_edges():
+    x = sc.linspace('x', 0.1, 0.4, 4, units='s')
+    edges = sc.as_edges(x)
+    assert edges.dims == ('x', )
+    assert edges.data.units == pint.Unit('s')
+
+
+def test_array_with_edges():
+    x = sc.as_edges(sc.linspace('x', 0.1, 0.5, 5, units='s'))
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    # TODO Figure out how to make ArrayIndex work with BinEdgeArray, in particular
+    # how to handle comparisons or things such as np.nonzero and np.argmax
