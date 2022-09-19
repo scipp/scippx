@@ -11,6 +11,10 @@ import pint
 
 default_unit = object()
 
+ureg = pint.UnitRegistry(force_ndarray_like=True)
+Unit = ureg.Unit
+Quantity = ureg.Quantity
+
 
 def _units_for_dtype(units, dtype):
     if units is not default_unit:
@@ -23,15 +27,15 @@ def _units_for_dtype(units, dtype):
 def linspace(dim, start, stop, num, *, endpoint=True, units=default_unit, dtype=None):
     data = np.linspace(start, stop, num, endpoint=endpoint, dtype=dtype)
     if (units := _units_for_dtype(units, dtype)) is not None:
-        data = pint.Quantity(data, units=units)
+        data = Quantity(data, units=units)
     return xr.DataArray(dims=(dim, ), data=data)
 
 
 def as_edges(da, dim=None):
     dim = dim if dim is not None else da.dims[-1]
     edges = BinEdgeArray(da.values)
-    if isinstance(da.data, pint.Quantity):
-        edges = pint.Quantity(edges, units=da.data.units)
+    if isinstance(da.data, Quantity):
+        edges = Quantity(edges, units=da.data.units)
     return xr.DataArray(dims=da.dims, data=edges)
 
 
@@ -39,7 +43,7 @@ def array(dims, values, *, variances=None, units=default_unit, coords=None, mask
     units = _units_for_dtype(units, values.dtype)
     data = values if variances is None else UncertainArray(values, variances)
     data = MultiMaskArray(data, masks=masks if masks is not None else {})
-    data = data if units is None else pint.Quantity(data, units)
+    data = data if units is None else Quantity(data, units)
     data = xr.Variable(dims=dims, data=data)
     coords = {} if coords is None else coords
     coords = {
@@ -78,7 +82,7 @@ class Scipp:
 
     def __getitem__(self, key):
         dim, val = key
-        if isinstance(val, pint.Quantity):
+        if isinstance(val, Quantity):
             coord = self._obj.coords[dim].data
             if val.units != coord.units:
                 raise KeyError("Wrong unit")

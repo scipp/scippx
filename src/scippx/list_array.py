@@ -12,6 +12,7 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, *, starts, stops, content, axis=0):
         self._starts: np.ndarray = starts
         self._stops: np.ndarray = stops
+        assert axis == 0  # TODO
         self._axis: int = axis  # axis of content referenced by starts and stops
         self._content = content  # array-like
 
@@ -22,6 +23,12 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     @property
     def ndim(self):
         return self._starts.ndim
+
+    @property
+    def values(self):
+        if self.shape == ():
+            return self._content[slice(self._starts, self._stops)]
+        raise NotImplementedError()
 
     def __repr__(self):
         return f"{self.__class__.__name__}(starts={self._starts},...)"
@@ -34,7 +41,6 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array__(self, dtype=None):
         raise NotImplementedError()
-        # TODO apply masks?
         return self._values.__array__()
 
     def __copy__(self):

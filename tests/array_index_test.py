@@ -56,6 +56,8 @@ def test_sel_with_pint_quantity(array_with_quantity_array_index):
     da = array_with_quantity_array_index
     assert da.coords['x'].data.units == pint.Unit('m')
     da_sel = da.sel(x=np.array(2.2) * pint.Unit('m'))
-    # This is not working currenty, as this is not identified as a scalar
+    ureg = pint.UnitRegistry(force_ndarray_like=True)
+    # This is not working, as this is not identified as a scalar, but you can make it
+    # work using force_ndarray_like with pint.UnitRegistry, see scippx.scipp.Unit
     # da_sel = da.sel(x=2.2 * pint.Unit('m'))
     # da_sel = da.sel(x=pint.Quantity(2.2, 'm'))
