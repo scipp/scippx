@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2022 Scipp contributors (https://github.com/scipp)
 # @author Simon Heybrock
+from .array_index import ArrayIndex
 from .multi_mask_array import MultiMaskArray
 from .uncertain_array import UncertainArray
 import xarray as xr
@@ -37,8 +38,10 @@ def array(dims, values, *, variances=None, units=default_unit, coords=None, mask
         for name, coord in coords.items()
     }
     # Set coords without indexes to avoid stripping of units
-    return xr.DataArray(data=data, coords=coords, indexes={}, fastpath=True)
-
+    da = xr.DataArray(data=data, coords=coords, indexes={}, fastpath=True)
+    for name in coords:
+        da = da.set_xindex(name, ArrayIndex)
+    return da
 
 
 class Coords:
@@ -70,4 +73,4 @@ class Scipp:
             coord = self._obj.coords[dim].data
             if val.units != coord.units:
                 raise KeyError("Wrong unit")
-            return self._obj[{dim:np.flatnonzero(coord.magnitude == val.magnitude)}]
+            return self._obj[{dim: np.flatnonzero(coord.magnitude == val.magnitude)}]

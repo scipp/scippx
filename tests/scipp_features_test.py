@@ -48,7 +48,16 @@ def test_array_with_dimension_coord_label_based_lookup_raises_since_no_index():
 
 
 def test_array_scipp_quantity_lookup():
-    x = sc.linspace('x', 0.1, 0.2, 4, units='s')
+    x = sc.linspace('x', 0.1, 0.4, 4, units='s')
     da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
-    sel = da.scipp[('x', 0.1 * pint.Unit('s'))]
-    assert sel.equals(da[0:1])
+    sel = da.scipp[('x', 0.2 * pint.Unit('s'))]
+    assert sel.equals(da[1:2])
+
+
+def test_array_quantity_lookup():
+    x = sc.linspace('x', 0.1, 0.4, 4, units='s')
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    sel = da.sel(x=np.array(0.2) * pint.Unit('s'))
+    assert sel.equals(da[1])
+    sel = da.loc[{'x':np.array(0.2) * pint.Unit('s')}]
+    assert sel.equals(da[1])
