@@ -14,3 +14,4 @@ from .bin_edge_array import BinEdgeArray
 from .multi_mask_array import MultiMaskArray
 from .uncertain_array import UncertainArray
 from . import scipp
+from .array_index import ArrayIndex
