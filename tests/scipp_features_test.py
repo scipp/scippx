@@ -40,11 +40,19 @@ def test_array_with_non_dimension_coord():
     assert da.scipp.coords['x2'].equals(x2)
 
 
-def test_array_with_dimension_coord_label_based_lookup_raises_since_no_index():
-    x = sc.linspace('x', 0.1, 0.2, 4, units='s')
+def test_array_with_dimension_coord_label_based_lookup():
+    x = sc.linspace('x', 0.1, 0.4, 4, units=None)
     da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
-    with pytest.raises(KeyError):
-        da.loc[0.1]
+    assert da.loc[0.2].equals(da[1])
+
+
+def test_array_with_dimension_coord_label_based_lookup_raiss_if_unit_not_specified():
+    x = sc.linspace('x', 0.1, 0.4, 4, units='s')
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    with pytest.raises(pint.errors.DimensionalityError):
+        da.sel(x=0.2)
+    with pytest.raises(pint.errors.DimensionalityError):
+        da.loc[0.2]
 
 
 def test_array_scipp_quantity_lookup():
@@ -59,5 +67,5 @@ def test_array_quantity_lookup():
     da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
     sel = da.sel(x=np.array(0.2) * pint.Unit('s'))
     assert sel.equals(da[1])
-    sel = da.loc[{'x':np.array(0.2) * pint.Unit('s')}]
+    sel = da.loc[{'x': np.array(0.2) * pint.Unit('s')}]
     assert sel.equals(da[1])
