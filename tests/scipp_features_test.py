@@ -46,7 +46,7 @@ def test_array_with_dimension_coord_label_based_lookup():
     assert da.loc[0.2].equals(da[1])
 
 
-def test_array_with_dimension_coord_label_based_lookup_raiss_if_unit_not_specified():
+def test_array_with_dimension_coord_label_based_lookup_raises_if_unit_not_specified():
     x = sc.linspace('x', 0.1, 0.4, 4, units='s')
     da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
     with pytest.raises(pint.errors.DimensionalityError):
