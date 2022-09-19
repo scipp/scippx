@@ -11,6 +11,8 @@ import pint
 
 default_unit = object()
 
+# This option ensures that we can use DataArray.sel with a Quantity created from a
+# Python scalar, without having to manually make it a 0-D ndarray.
 ureg = pint.UnitRegistry(force_ndarray_like=True)
 Unit = ureg.Unit
 Quantity = ureg.Quantity
