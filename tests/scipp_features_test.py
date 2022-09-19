@@ -69,3 +69,11 @@ def test_array_quantity_lookup():
     assert sel.equals(da[1])
     sel = da.loc[{'x': np.array(0.2) * pint.Unit('s')}]
     assert sel.equals(da[1])
+
+
+def test_coords_support_inplace_modification_and_get_reflected_in_index():
+    x = sc.linspace('x', 0.1, 0.4, 4, units='s')
+    da = sc.array(dims=('x', ), values=np.arange(4), coords={'x': x})
+    assert da.sel(x=np.array(0.2) * pint.Unit('s')).equals(da[1])
+    da.coords['x'] *= 2
+    assert da.sel(x=np.array(0.2) * pint.Unit('s')).equals(da[0])
