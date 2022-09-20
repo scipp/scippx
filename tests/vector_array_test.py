@@ -15,8 +15,14 @@ def test_add():
     np.testing.assert_array_equal(vec.values, [4, 6, 8])
 
 
-def test_add_fails_if_different_vectors():
+def test_add_raises_if_different_vectors():
     vec1 = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
     vec2 = sx.VectorArray(np.array([3, 4, 5]), ['vx', 'vy', 'vz'])
     with pytest.raises(ValueError):
         vec1 + vec2
+
+
+def test_mul_raises():
+    vec = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
+    with pytest.raises(ValueError):
+        vec * vec

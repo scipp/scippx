@@ -35,6 +35,8 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self._values
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if ufunc == np.multiply:
+            raise ValueError("Vectors cannot be multiplied. Did you mean dot()?")
         if method == '__call__':
             arrays = []
             for x in inputs:
