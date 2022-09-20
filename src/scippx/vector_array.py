@@ -2,13 +2,14 @@ from typing import List
 import numpy as np
 import numpy.lib.mixins
 
+
 class Fields:
 
     def __init__(self, obj):
         self._obj = obj
 
     def __getitem__(self, key):
-        return self._obj[self._field_names.index(key)]
+        return self._obj.values[self._obj._field_names.index(key)]
 
 
 class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
@@ -23,8 +24,17 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def shape(self):
         return self._values.shape[1:]
 
+    @property
+    def ndim(self):
+        return self._values.ndim - 1
+
     def __getitem__(self, index):
-        return VectorArray(self._values[:, index], self._components)
+        return VectorArray(self._values[:, index], self._field_names)
+
+    @property
+    def dtype(self):
+        # TODO this does not sound right
+        return self.values.dtype
 
     @property
     def fields(self):
@@ -36,6 +46,7 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if ufunc == np.multiply:
+            # TODO We should allow scaling with a scalar
             raise ValueError("Vectors cannot be multiplied. Did you mean dot()?")
         if method == '__call__':
             arrays = []
@@ -49,7 +60,8 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             if (out := kwargs.get('out')) is not None:
                 kwargs['out'] = tuple(
                     [v._values if isinstance(v, VectorArray) else v for v in out])
-            return self.__class__(ufunc(*arrays, **kwargs), field_names=self._field_names)
+            return self.__class__(ufunc(*arrays, **kwargs),
+                                  field_names=self._field_names)
         else:
             return NotImplemented
 
