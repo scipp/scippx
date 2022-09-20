@@ -7,6 +7,7 @@ from copy import copy, deepcopy
 from functools import reduce
 
 
+
 class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, *, starts, stops, content, axis=0):
@@ -79,3 +80,32 @@ class ListArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_function__(self, func, types, args, kwargs):
         raise NotImplementedError()
+
+    def sum_bins(self):
+        #out = np.empty_like(self._content, shape=self.shape)
+        # If we wanted to implement this in C++, we would need something like
+        #     _cpp.sum_bins(out, self._starts, self._stops, self._content)
+        #
+        # But we want to support many types of content:
+        # np.ndarray
+        # xr.Variable
+        # xr.DataArray
+        # xr.Dataset
+        # pd.DataFrame
+        # Dict[str, np.ndarray]
+        # etc..
+        #
+        # Calling np.sum and relying on duck-array API is too slow.
+        # Dict of columns and their roles? (data, mask, coord, ...), but this would
+        # ignore duck-array API.
+        #flat = np.ravel(out)
+        indices = np.stack([np.ravel(self._starts), np.ravel(self._stops)]).T.flatten()
+        # TODO remove last only if equal to end
+        out = np.add.reduceat(self._content, indices[:-1])[::2]
+        return out.reshape(self.shape)
+        #for i, (start, stop) in enumerate(zip(np.ravel(self._starts),
+        #                                      np.ravel(self._stops))):
+        #    flat[i] = np.sum(self._content[start:stop])
+        #return out
+
+
