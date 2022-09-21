@@ -106,3 +106,5 @@ def test_mask_array():
     assert da.masks['mask1'].dims == ('x', )
     # Note the order: BinEdgeArray is *inside* MultiMaskArray, but we get the mask
     da.left.masks['mask1']
+    assert da.units == Unit('m/s')
+    assert not hasattr(da.masks['mask1'], 'units')
