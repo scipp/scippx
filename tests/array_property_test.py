@@ -22,23 +22,22 @@ def _quantity_array_property(self, name, wrap):
 
 setattr(Quantity, '__array_property__', _quantity_array_property)
 
-
 # props accessor is a partial solution, but makes chaining cumbersome:
 #   da.props.left.props.fields['vx']
 #
 # @xr.register_dataarray_accessor('props')
 # class PropertyAccessor:
-# 
+#
 #     def __init__(self, xarray_obj):
 #         self._obj = xarray_obj
-# 
+#
 #     def __getattr__(self, name: str):
-# 
+#
 #         def wrap(x):
 #             out = self._obj.copy(deep=False)
 #             out.data = x
 #             return out
-# 
+#
 #         return self._obj.data.__array_property__(name, wrap=wrap)
 
 
@@ -83,3 +82,13 @@ def test_basics():
     da.fields['vx'].magnitude.left
     with pytest.raises(AttributeError):
         da.left.left
+
+
+def test_method():
+    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    da = xr.DataArray(dims=('x', ), data=data, coords={'x': np.arange(4)})
+    assert da.center().units == Unit('m/s')
+    da.center().fields['vy'].units
+    da.magnitude.center()

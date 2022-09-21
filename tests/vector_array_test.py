@@ -26,3 +26,9 @@ def test_mul_raises():
     vec = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
     with pytest.raises(ValueError):
         vec * vec
+
+
+def test_scale():
+    vec = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
+    result = 3 * vec
+    np.testing.assert_array_equal(result.values, [3, 6, 9])

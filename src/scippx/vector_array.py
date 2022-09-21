@@ -47,18 +47,19 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self._values
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        if ufunc == np.multiply:
-            # TODO We should allow scaling with a scalar
-            raise ValueError("Vectors cannot be multiplied. Did you mean dot()?")
         if method == '__call__':
             arrays = []
+            vector_count = 0
             for x in inputs:
                 if isinstance(x, VectorArray):
+                    vector_count += 1
                     if x._field_names != self._field_names:
                         raise ValueError(f"Incompatible field names {x._field_names}")
                     arrays.append(x._values)
                 else:
                     arrays.append(x)
+            if ufunc == np.multiply and vector_count > 1:
+                raise ValueError("Vectors cannot be multiplied. Did you mean dot()?")
             if (out := kwargs.get('out')) is not None:
                 kwargs['out'] = tuple(
                     [v._values if isinstance(v, VectorArray) else v for v in out])
