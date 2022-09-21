@@ -78,3 +78,13 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_function__(self):
         pass
+
+    def __array_property__(self, name, wrap):
+        if name == 'left':
+            return wrap(self.left)
+        if name == 'right':
+            return wrap(self.right)
+        if hasattr(self._values, '__array_property__'):
+            return self._values.__array_property__(
+                name, wrap=lambda x: wrap(self.__class__(x)))
+        raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
