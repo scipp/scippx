@@ -2,6 +2,7 @@ import numpy as np
 import scippx.scipp as sc
 import pint
 import pytest
+from scippx import accessors
 
 
 def test_linspace():

@@ -9,7 +9,6 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "0.0.0"
 
-from . import accessors
 from .bin_edge_array import BinEdgeArray
 from .list_array import ListArray
 from .multi_mask_array import MultiMaskArray

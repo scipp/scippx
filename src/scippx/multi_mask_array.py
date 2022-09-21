@@ -7,6 +7,20 @@ from copy import copy, deepcopy
 from functools import reduce
 
 
+class Masks:
+
+    def __init__(self, obj, wrap=None):
+        self._masks = obj._masks
+        self._wrap = wrap
+
+    def __len__(self):
+        return len(self._masks)
+
+    def __getitem__(self, key):
+        mask = self._masks[key]
+        return mask if self._wrap is None else self._wrap(mask)
+
+
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, values, masks=None):
@@ -15,23 +29,23 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     @property
     def shape(self):
-        return self.values.shape
+        return self.data.shape
 
     @property
     def dtype(self):
-        return self.values.dtype
+        return self.data.dtype
 
     @property
     def ndim(self):
-        return self.values.ndim
+        return self.data.ndim
 
     @property
-    def values(self):
+    def data(self):
         return self._values
 
     @property
     def masks(self):
-        return self._masks
+        return Masks(self)
 
     def _flat_mask(self):
         return reduce(lambda x, y: np.logical_or(x, y), self._masks.values())
@@ -42,12 +56,12 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __getitem__(self, key):
         return self.__class__(self._values[key],
                               {name: mask[key]
-                               for name, mask in self.masks.items()})
+                               for name, mask in self._masks.items()})
 
     def __setitem__(self, key, value):
         self._values[key] = value
-        for name, mask in value.masks.items():
-            self.masks[name][key] = mask
+        for name, mask in value._masks.items():
+            self._masks[name][key] = mask
 
     def __array__(self, dtype=None):
         # TODO apply masks?
@@ -64,7 +78,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             for x in inputs:
                 if isinstance(x, MultiMaskArray):
                     arrays.append(x._values)
-                    for key, mask in x.masks.items():
+                    for key, mask in x._masks.items():
                         if key in masks:
                             masks[key] = np.logical_or(masks[key], mask)
                         else:
@@ -73,7 +87,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                     arrays.append(x)
             if (out := kwargs.get('out')) is not None:
                 kwargs['out'] = tuple(
-                    [v.values if isinstance(v, MultiMaskArray) else v for v in out])
+                    [v.data if isinstance(v, MultiMaskArray) else v for v in out])
             return self.__class__(ufunc(*arrays, **kwargs), masks=masks)
         else:
             return NotImplemented
@@ -84,20 +98,31 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         # TODO handle more args, this works for concatenate and broadcast_arrays
         def values(arg):
             if isinstance(arg, MultiMaskArray):
-                return arg.values
+                return arg.data
             if isinstance(arg, list):
                 return [values(x) for x in arg]
             return arg
+
         arrays = tuple([values(x) for x in args])
         values = func(*arrays, **kwargs)
         masks = {}
-        for name in self.masks:
-            masks[name] = func([x.masks[name] for x in args[0]], **kwargs)
+        for name in self._masks:
+            masks[name] = func([x._masks[name] for x in args[0]], **kwargs)
         return self.__class__(values, masks)
 
     def __getattr__(self, item):
         try:
-            return getattr(self.values, item)
+            return getattr(self.data, item)
         except AttributeError:
             raise AttributeError("Neither MultiMaskArray object nor its data ({}) "
-                                 "has attribute '{}'".format(self.values, item))
+                                 "has attribute '{}'".format(self.data, item))
+
+    def __array_property__(self, name, wrap):
+        if name == 'data':
+            return wrap(self.data)
+        if name == 'masks':
+            return Masks(self, wrap)
+        if hasattr(self.data, '__array_property__'):
+            return self.data.__array_property__(
+                name, wrap=lambda x: wrap(self.__class__(x, self._masks)))
+        raise AttributeError(f"{self.__class__} object has no attribute '{name}'")

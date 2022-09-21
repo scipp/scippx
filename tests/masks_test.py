@@ -3,6 +3,7 @@ import xarray as xr
 import scippx as sx
 from pint import Quantity
 import pytest
+from scippx import accessors
 
 
 @pytest.fixture

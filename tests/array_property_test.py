@@ -92,3 +92,17 @@ def test_method():
     assert da.center().units == Unit('m/s')
     da.center().fields['vy'].units
     da.magnitude.center()
+
+
+def test_mask_array():
+    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    masked = sx.MultiMaskArray(data,
+                               masks={'mask1': np.array([False, False, True, False])})
+    da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
+
+    # Note how neither `mask1` nor MultiMaskArray know about dims, but this works:
+    assert da.masks['mask1'].dims == ('x', )
+    # Note the order: BinEdgeArray is *inside* MultiMaskArray, but we get the mask
+    da.left.masks['mask1']
