@@ -108,3 +108,34 @@ def test_mask_array():
     da.left.masks['mask1']
     assert da.units == Unit('m/s')
     assert not hasattr(da.masks['mask1'], 'units')
+
+
+def test_order():
+    values = np.arange(6).reshape(3, 2)
+    fields = ['vx', 'vy', 'vz']
+    units = 'm/s'
+    mv = sx.MultiMaskArray(sx.VectorArray(values, fields))
+    vm = sx.VectorArray(sx.MultiMaskArray(values), fields)
+    mv.masks['a' ] = np.array([False, False])
+
+    out1 = mv + vm
+    # New order given by first operand. Nesting terminates.
+    assert isinstance(out1, sx.MultiMaskArray)
+    assert isinstance(out1.data, sx.VectorArray)
+    assert isinstance(out1.data.values, np.ndarray)
+    assert 'a' in out1.masks
+    np.testing.assert_array_equal(out1.data.values, values+values)
+
+    out2 = vm + mv
+    assert isinstance(out2, sx.VectorArray)
+    assert isinstance(out2.values, sx.MultiMaskArray)
+    assert isinstance(out2.values.data, np.ndarray)
+    # This is broken in general: Duck arrays may change shape w.r.t. underlying array,
+    # so we cannot arbitrarily reorder layers. For example:
+    # (1) We cannot swap a bin-edge mask to become a bin-center mask.
+    # (2) A mask of vectors fields cannot become a mask wrapping VectorArray.
+    # It will be hard to verify this in general. Having dimension labels would go a
+    # long way, i.e., our lowest-level duck array should always be a minimal version of
+    # xr.Variable, but it would still result in operations that do not work.
+    assert 'a' in out2.values.masks
+    np.testing.assert_array_equal(out2.values.data, values+values)

@@ -7,6 +7,13 @@ from copy import copy, deepcopy
 from functools import reduce
 
 
+def get_array_property(array, name: str, default=None):
+    try:
+        return array.__array_property__(name, wrap=lambda x: x)
+    except AttributeError:
+        return default
+
+
 class Masks:
 
     def __init__(self, obj, wrap=None):
@@ -27,6 +34,9 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         self._values = values
         self._masks = masks if masks is not None else {}
 
+    def __len__(self):
+        return len(self.data)
+
     @property
     def shape(self):
         return self.data.shape
@@ -45,7 +55,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     @property
     def masks(self):
-        return Masks(self)
+        return self._masks
 
     def _flat_mask(self):
         return reduce(lambda x, y: np.logical_or(x, y), self._masks.values())
@@ -76,9 +86,12 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             arrays = []
             masks = {}
             for x in inputs:
-                if isinstance(x, MultiMaskArray):
-                    arrays.append(x._values)
-                    for key, mask in x._masks.items():
+                # If this gets called we know that one of the inputs matches our type
+                if (data := get_array_property(x,
+                                               '_multi_mask_array_data_')) is not None:
+                    arrays.append(data)
+                    masks_wrapper = get_array_property(x, 'masks')
+                    for key, mask in masks_wrapper._masks.items():
                         if key in masks:
                             masks[key] = np.logical_or(masks[key], mask)
                         else:
@@ -118,6 +131,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                                  "has attribute '{}'".format(self.data, item))
 
     def __array_property__(self, name, wrap):
+        if name == '_multi_mask_array_data_':
+            return wrap(self.data)
         if name == 'data':  # This is probably a bad idea since xr.DataArray.data exists
             return wrap(self.data)
         if name == 'masks':
