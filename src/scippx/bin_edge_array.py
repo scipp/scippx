@@ -7,10 +7,14 @@ from copy import copy, deepcopy
 
 
 def wrap_result(wrap):
+
     def decorator(callable):
+
         def func(*args, **kwargs):
             return wrap(callable(*args, **kwargs))
+
         return func
+
     return decorator
 
 
@@ -90,7 +94,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __array_function__(self):
         pass
 
-    def __array_property__(self, name, wrap):
+    def __array_property__(self, name, wrap, unwrap):
         if name == 'left':
             return wrap(self.left)
         if name == 'right':
@@ -98,8 +102,9 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if name == 'center':
             return wrap_result(wrap)(self.center)
         if hasattr(self._values, '__array_property__'):
-            return self._values.__array_property__(
-                name, wrap=lambda x: wrap(self.__class__(x)))
+            wrap_ = lambda x: wrap(self.__class__(x))
+            unwrap_ = unwrap  # TODO action required?
+            return self._values.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         # TODO Mechanism for reporting entire stack of searched duck arrays in
         # exception message.
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")

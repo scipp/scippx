@@ -9,16 +9,20 @@ from functools import reduce
 
 class Masks:
 
-    def __init__(self, obj, wrap=None):
+    def __init__(self, obj, wrap=None, unwrap=None):
         self._masks = obj._masks
-        self._wrap = wrap
+        self._wrap = (lambda x: x) if wrap is None else wrap
+        self._unwrap = (lambda x: x) if unwrap is None else unwrap
 
     def __len__(self):
         return len(self._masks)
 
     def __getitem__(self, key):
         mask = self._masks[key]
-        return mask if self._wrap is None else self._wrap(mask)
+        return self._wrap(mask)
+
+    def __setitem__(self, key, value):
+        self._masks[key] = self._unwrap(value)
 
 
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
@@ -117,12 +121,13 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             raise AttributeError("Neither MultiMaskArray object nor its data ({}) "
                                  "has attribute '{}'".format(self.data, item))
 
-    def __array_property__(self, name, wrap):
+    def __array_property__(self, name, wrap, unwrap):
         if name == 'data':  # This is probably a bad idea since xr.DataArray.data exists
             return wrap(self.data)
         if name == 'masks':
-            return Masks(self, wrap)
+            return Masks(self, wrap=wrap, unwrap=unwrap)
         if hasattr(self.data, '__array_property__'):
-            return self.data.__array_property__(
-                name, wrap=lambda x: wrap(self.__class__(x, self._masks)))
+            wrap_ = lambda x: wrap(self.__class__(x, self._masks))
+            unwrap_ = unwrap  # TODO strip and handle masks
+            return self.data.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
