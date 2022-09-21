@@ -118,7 +118,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                                  "has attribute '{}'".format(self.data, item))
 
     def __array_property__(self, name, wrap):
-        if name == 'data':
+        if name == 'data':  # This is probably a bad idea since xr.DataArray.data exists
             return wrap(self.data)
         if name == 'masks':
             return Masks(self, wrap)
