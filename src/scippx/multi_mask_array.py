@@ -24,6 +24,9 @@ class Masks:
     def __setitem__(self, key, value):
         self._masks[key] = self._unwrap(value)
 
+    def __contains__(self, key):
+        return key in self._masks
+
 
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 

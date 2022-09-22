@@ -3,6 +3,7 @@ import scippx as sx
 import pytest
 import xarray as xr
 import pint
+import dask
 
 ureg = pint.UnitRegistry(force_ndarray_like=True)
 Unit = ureg.Unit
@@ -73,6 +74,16 @@ def _dataarray_getattr(self, name: str):
 # i.e., xarray would ship with this.
 setattr(xr.DataArray, '__array_property__', _dataarray_array_property)
 setattr(xr.DataArray, '__getattr__', _dataarray_getattr)
+
+
+def _dask_array_property(self, name, wrap, unwrap):
+    if name == 'xcompute':
+        from scippx.array_attr import rewrap_result
+        return rewrap_result(wrap)(self.compute)
+    raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
+
+
+setattr(dask.array.core.Array, '__array_property__', _dask_array_property)
 
 
 def test_basics():
@@ -149,6 +160,19 @@ def test_setattr():
                                masks={'mask1': np.array([False, False, True, False])})
     da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
 
-
     # TODO We probably need a separate __array_setattr__ for this
     # da.magnitude += 2
+
+
+def test_dask():
+    array = dask.array.arange(15).reshape(3, 5)
+    vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    masked = sx.MultiMaskArray(data,
+                               masks={'mask1': np.array([False, False, True, False])})
+    da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
+    result = da.xcompute()
+    assert result.dims == ('x', )
+    assert result.units == Unit('m/s')
+    assert 'mask1' in da.masks

@@ -79,7 +79,7 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if name == 'fields':
             return Fields(self, wrap=wrap, unwrap=unwrap)
         if hasattr(self._values, '__array_property__'):
-            wrap = lambda x: wrap(self.__class__(x, self._field_names))
-            unwrap = unwrap  # TODO strip and check field names
-            return self._values.__array_property__(name, wrap=wrap, unwrap=unwrap)
+            wrap_ = lambda x: wrap(self.__class__(x, self._field_names))
+            unwrap_ = unwrap  # TODO strip and check field names
+            return self._values.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
