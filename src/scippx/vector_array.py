@@ -3,6 +3,26 @@ import numpy as np
 import numpy.lib.mixins
 
 
+def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
+    print(prototype.shape, shape)
+    shape = (3,)+ (shape if isinstance(shape, tuple) else (shape, ))
+    values = np.empty_like(prototype.values,
+                           dtype=dtype,
+                           order=order,
+                           subok=subok,
+                           shape=shape)
+    return VectorArray(values, prototype._field_names)
+
+
+def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
+    assert out is None
+    values = np.concatenate(tuple(args.values for arg in args),
+                            axis=axis + 1,
+                            dtype=stype,
+                            casting=casting)
+    return VectorArray(values, args[0]._field_names)
+
+
 class Fields:
 
     def __init__(self, obj, wrap=None, unwrap=None):
@@ -36,6 +56,9 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __getitem__(self, index):
         return VectorArray(self._values[:, index], self._field_names)
+
+    def __setitem__(self, key, value):
+        self.values[:,key] = value.values
 
     @property
     def dtype(self):
@@ -72,8 +95,15 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         else:
             return NotImplemented
 
-    def __array_function__(self):
-        """TODO"""
+    def __array_function__(self, func, types, args, kwargs):
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        if func == np.concatenate:
+            return concatenate(*args, **kwargs)
+        if func == np.empty_like:
+            return empty_like(*args, **kwargs)
+        return NotImplemented
+
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'fields':

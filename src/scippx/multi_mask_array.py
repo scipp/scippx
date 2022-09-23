@@ -66,11 +66,15 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                                for name, mask in self._masks.items()})
 
     def __setitem__(self, key, value):
-        self._values[key] = value
+        print(key, value)
+        print(type(self._values))
+        self._values[key] = value._values
+        # TODO what does this do if masks dict empty?
         for name, mask in value._masks.items():
             self._masks[name][key] = mask
 
     def __array__(self, dtype=None):
+        raise RuntimeError("Cannot convert MultiMaskArray to ndarray")
         # TODO apply masks?
         return self._values.__array__()
 
@@ -103,6 +107,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
         # TODO handle more args, this works for concatenate and broadcast_arrays
+        print(func)
         def values(arg):
             if isinstance(arg, MultiMaskArray):
                 return arg.data
@@ -112,9 +117,12 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
         arrays = tuple([values(x) for x in args])
         values = func(*arrays, **kwargs)
-        masks = {}
-        for name in self._masks:
-            masks[name] = func([x._masks[name] for x in args[0]], **kwargs)
+        if len(args) == 0:
+            masks = None
+        else:
+            masks = {}
+            for name in self._masks:
+                masks[name] = func([x._masks[name] for x in args[0]], **kwargs)
         return self.__class__(values, masks)
 
     def __getattr__(self, item):

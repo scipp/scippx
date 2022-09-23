@@ -18,6 +18,25 @@ def wrap_result(wrap):
     return decorator
 
 
+def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
+    assert len(shape) == 1
+    shape = (shape[0]+1)
+    values = np.empty_like(prototype.values,
+                           dtype=dtype,
+                           order=order,
+                           subok=subok,
+                           shape=shape)
+    return BinEdgeArray(values)
+
+
+def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
+    assert out is None
+    first, *rest = args
+    # TODO check compatible left and right
+    args = (first.values, ) + (x.right for x in rest)
+    return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))
+
+
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, values):
@@ -68,6 +87,15 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         else:
             return self.__class__(self._values[slice(key.start, key.stop + 1)])
 
+    def __setitem__(self, key, value):
+        if isinstance(key, tuple) and len(key)==1:
+            key = key[0]
+        if isinstance(key, slice):
+            start = key.start
+            stop = key.stop
+            key = slice(start, stop+1)
+        self.values[key] = value.values
+
     def __array__(self, dtype=None):
         # TODO Should this return midpoints? Or self.left?
         return self._values.__array__()
@@ -91,8 +119,15 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         else:
             return NotImplemented
 
-    def __array_function__(self):
-        pass
+    def __array_function__(self, func, types, args, kwargs):
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        if func == np.concatenate:
+            return concatenate(*args, **kwargs)
+        if func == np.empty_like:
+            return empty_like(*args, **kwargs)
+        return NotImplemented
+
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'left':
