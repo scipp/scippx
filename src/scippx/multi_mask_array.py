@@ -7,6 +7,13 @@ from copy import copy, deepcopy
 from functools import reduce
 
 
+def amax(a, axis=None):
+    # TODO Handle multi-dim case and apply only relevant masks
+    mask = a._flat_mask()
+    ma = np.ma.array(a.data, mask=a._flat_mask())
+    return MultiMaskArray(np.amax(ma))
+
+
 class Masks:
 
     def __init__(self, obj, wrap=None, unwrap=None):
@@ -104,6 +111,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __array_function__(self, func, types, args, kwargs):
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
+        if func == np.amax:
+            return amax(*args, **kwargs)
         # TODO handle more args, this works for concatenate and broadcast_arrays
         def values(arg):
             if isinstance(arg, MultiMaskArray):
@@ -134,7 +143,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                     try:
                         nop = lambda x: x
                         # Hack for dask xcompute: call explicit
-                        masks[key] = mask.__array_property__(name, wrap=nop, unwrap=nop)()
+                        masks[key] = mask.__array_property__(name, wrap=nop,
+                                                             unwrap=nop)()
                     except AttributeError:
                         masks[key] = mask
                 else:

@@ -22,6 +22,15 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     return VectorArray(values, args[0]._field_names)
 
 
+def amax(a, axis=None):
+    if axis is not None and len(axis) and max(axis) >= a.ndim:
+        # Avoid comuting over internal axes
+        raise ValueError("Axis index too large")
+    return VectorArray(np.amax(a.values, axis=axis), a._field_names)
+
+
+
+
 class Fields:
 
     def __init__(self, obj, wrap=None, unwrap=None):
@@ -104,6 +113,8 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return concatenate(*args, **kwargs)
         if func == np.empty_like:
             return empty_like(*args, **kwargs)
+        if func == np.amax:
+            return amax(*args, **kwargs)
         return NotImplemented
 
     def __array_property__(self, name, wrap, unwrap):

@@ -40,6 +40,13 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))
 
 
+def amax(a, axis=None):
+    if axis is not None and axis != (a.ndim - 1):  # TODO check tuple
+        return BinEdgeArray(np.amax(a.values, axis=axis))
+    else:  # edge-axis is removed, do not return BinEdgeArray but underlying array
+        return np.amax(a.values, axis=None)
+
+
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, values):
@@ -129,6 +136,8 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return concatenate(*args, **kwargs)
         if func == np.empty_like:
             return empty_like(*args, **kwargs)
+        if func == np.amax:
+            return amax(*args, **kwargs)
         return NotImplemented
 
     def __array_property__(self, name, wrap, unwrap):
