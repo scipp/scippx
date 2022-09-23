@@ -24,51 +24,51 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
         shape = shape
     else:
         shape = (shape[0] + 1)
-    values = np.empty_like(prototype.values,
-                           dtype=dtype,
-                           order=order,
-                           subok=subok,
-                           shape=shape)
-    return BinEdgeArray(values)
+    edges = np.empty_like(prototype.edges,
+                          dtype=dtype,
+                          order=order,
+                          subok=subok,
+                          shape=shape)
+    return BinEdgeArray(edges)
 
 
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     first, *rest = args
     # TODO check compatible left and right
-    args = (first.values, ) + (x.right for x in rest)
+    args = (first.edges, ) + (x.right for x in rest)
     return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))
 
 
 def amax(a, axis=None):
     if axis is not None and axis != (a.ndim - 1):  # TODO check tuple
-        return BinEdgeArray(np.amax(a.values, axis=axis))
+        return BinEdgeArray(np.amax(a.edges, axis=axis))
     else:  # edge-axis is removed, do not return BinEdgeArray but underlying array
-        return np.amax(a.values, axis=None)
+        return np.amax(a.edges, axis=None)
 
 
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
-    def __init__(self, values):
-        assert values.ndim == 1  # TODO
+    def __init__(self, edges):
+        assert edges.ndim == 1  # TODO
         # TODO check increasing
-        self._values = values
+        self._values = edges
 
     @property
     def shape(self):
         # TODO >1d
-        return (self.values.shape[0] - 1, )
+        return (self.edges.shape[0] - 1, )
 
     @property
     def dtype(self):
-        return self.values.dtype
+        return self.edges.dtype
 
     @property
     def ndim(self):
-        return self.values.ndim
+        return self.edges.ndim
 
     @property
-    def values(self):
+    def edges(self):
         return self._values
 
     @property
@@ -104,7 +104,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             start = key.start
             stop = key.stop
             key = slice(start, stop + 1)
-        self.values[key] = value.values
+        self.edges[key] = value.edges
 
     def __array__(self, dtype=None):
         # TODO Should this return midpoints? Or self.left?
@@ -138,6 +138,9 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return empty_like(*args, **kwargs)
         if func == np.amax:
             return amax(*args, **kwargs)
+        if func == np.sum:
+            raise RuntimeError("Summing BinEdgeArray is not possible. "
+                               "Try summing the `centers()` or `edges`.")
         return NotImplemented
 
     def __array_property__(self, name, wrap, unwrap):
