@@ -20,7 +20,10 @@ def wrap_result(wrap):
 
 def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
     assert len(shape) == 1
-    shape = (shape[0]+1)
+    if shape[0] == 0:
+        shape = shape
+    else:
+        shape = (shape[0] + 1)
     values = np.empty_like(prototype.values,
                            dtype=dtype,
                            order=order,
@@ -76,7 +79,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return len(self._values) - 1
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(values={self._values})"
+        return f"{self.__class__.__name__}(shape={self.shape}, edges={self._values})"
 
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -88,12 +91,12 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return self.__class__(self._values[slice(key.start, key.stop + 1)])
 
     def __setitem__(self, key, value):
-        if isinstance(key, tuple) and len(key)==1:
+        if isinstance(key, tuple) and len(key) == 1:
             key = key[0]
         if isinstance(key, slice):
             start = key.start
             stop = key.stop
-            key = slice(start, stop+1)
+            key = slice(start, stop + 1)
         self.values[key] = value.values
 
     def __array__(self, dtype=None):
@@ -127,7 +130,6 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if func == np.empty_like:
             return empty_like(*args, **kwargs)
         return NotImplemented
-
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'left':

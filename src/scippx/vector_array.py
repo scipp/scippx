@@ -4,8 +4,7 @@ import numpy.lib.mixins
 
 
 def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
-    print(prototype.shape, shape)
-    shape = (3,)+ (shape if isinstance(shape, tuple) else (shape, ))
+    shape = (shape if isinstance(shape, tuple) else (shape, )) + (3, )
     values = np.empty_like(prototype.values,
                            dtype=dtype,
                            order=order,
@@ -17,7 +16,7 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     values = np.concatenate(tuple(args.values for arg in args),
-                            axis=axis + 1,
+                            axis=axis,
                             dtype=stype,
                             casting=casting)
     return VectorArray(values, args[0]._field_names)
@@ -31,34 +30,37 @@ class Fields:
         self._unwrap = (lambda x: x) if unwrap is None else unwrap
 
     def __getitem__(self, key):
-        field = self._obj.values[self._obj._field_names.index(key)]
+        field = self._obj.values[..., self._obj._field_names.index(key)]
         return self._wrap(field)
 
     def __setitem__(self, key, value):
-        self._obj.values[self._obj._field_names.index(key)] = self._unwrap(value)
+        self._obj.values[..., self._obj._field_names.index(key)] = self._unwrap(value)
 
 
 class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, values: np.ndarray, field_names: List[str]):
         # Assuming a structure-of-array implementation
-        assert len(values) == len(field_names)
+        assert values.shape[-1] == len(field_names)
         self._values = values
         self._field_names = field_names
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(field_names={self._field_names}, shape={self.shape}, values={self.values})"
+
     @property
     def shape(self):
-        return self._values.shape[1:]
+        return self._values.shape[:-1]
 
     @property
     def ndim(self):
         return self._values.ndim - 1
 
     def __getitem__(self, index):
-        return VectorArray(self._values[:, index], self._field_names)
+        return VectorArray(self._values[index], self._field_names)
 
     def __setitem__(self, key, value):
-        self.values[:,key] = value.values
+        self.values[key] = value.values
 
     @property
     def dtype(self):
@@ -103,7 +105,6 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if func == np.empty_like:
             return empty_like(*args, **kwargs)
         return NotImplemented
-
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'fields':

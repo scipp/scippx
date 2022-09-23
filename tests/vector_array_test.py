@@ -4,7 +4,7 @@ import pytest
 
 
 def test_basics():
-    vectors = sx.VectorArray(np.arange(12).reshape(3, 4), ['x', 'y', 'z'])
+    vectors = sx.VectorArray(np.arange(12).reshape(4, 3), ['x', 'y', 'z'])
     assert vectors.shape == (4, )
 
 

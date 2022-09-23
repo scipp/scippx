@@ -66,8 +66,6 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                                for name, mask in self._masks.items()})
 
     def __setitem__(self, key, value):
-        print(key, value)
-        print(type(self._values))
         self._values[key] = value._values
         # TODO what does this do if masks dict empty?
         for name, mask in value._masks.items():
@@ -107,7 +105,6 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
         # TODO handle more args, this works for concatenate and broadcast_arrays
-        print(func)
         def values(arg):
             if isinstance(arg, MultiMaskArray):
                 return arg.data
@@ -125,20 +122,24 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                 masks[name] = func([x._masks[name] for x in args[0]], **kwargs)
         return self.__class__(values, masks)
 
-    def __getattr__(self, item):
-        try:
-            return getattr(self.data, item)
-        except AttributeError:
-            raise AttributeError("Neither MultiMaskArray object nor its data ({}) "
-                                 "has attribute '{}'".format(self.data, item))
-
     def __array_property__(self, name, wrap, unwrap):
         if name == 'data':  # This is probably a bad idea since xr.DataArray.data exists
             return wrap(self.data)
         if name == 'masks':
             return Masks(self, wrap=wrap, unwrap=unwrap)
         if hasattr(self.data, '__array_property__'):
-            wrap_ = lambda x: wrap(self.__class__(x, self._masks))
+            masks = {}
+            for key, mask in self._masks.items():
+                if hasattr(mask, '__array_property__'):
+                    try:
+                        nop = lambda x: x
+                        # Hack for dask xcompute: call explicit
+                        masks[key] = mask.__array_property__(name, wrap=nop, unwrap=nop)()
+                    except AttributeError:
+                        masks[key] = mask
+                else:
+                    masks[key] = mask
+            wrap_ = lambda x: wrap(self.__class__(x, masks))
             unwrap_ = unwrap  # TODO strip and handle masks
             return self.data.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")

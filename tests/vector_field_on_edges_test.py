@@ -5,11 +5,11 @@ import xarray as xr
 
 
 def test_basics():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     da = xr.DataArray(dims=('x', ), data=edges, coords={'x': np.arange(4)})
     da += 2
     da + da
-    np.testing.assert_array_equal(da.data.left.fields['vy'], [7, 8, 9, 10])
-    np.testing.assert_array_equal(da.data.right.fields['vy'], [8, 9, 10, 11])
-    np.testing.assert_array_equal(da.data.values.fields['vy'], [7, 8, 9, 10, 11])
+    np.testing.assert_array_equal(da.data.left.fields['vy'], [3, 6, 9, 12])
+    np.testing.assert_array_equal(da.data.right.fields['vy'], [6, 9, 12, 15])
+    np.testing.assert_array_equal(da.data.values.fields['vy'], [3, 6, 9, 12, 15])

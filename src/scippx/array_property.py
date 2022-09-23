@@ -4,6 +4,7 @@
 import pint
 import xarray as xr
 import dask
+from .array_index import ArrayIndex
 
 ureg = pint.UnitRegistry(force_ndarray_like=True)
 Unit = ureg.Unit
@@ -84,3 +85,15 @@ def _dask_array_property(self, name, wrap, unwrap):
 
 
 setattr(dask.array.core.Array, '__array_property__', _dask_array_property)
+
+
+def DataArray(*, dims, data, coords):
+    coords = {
+        key: xr.Variable(dims=(key, ), data=values)
+        for key, values in coords.items()
+    }
+    var = xr.Variable(dims=dims, data=data)
+    da = xr.DataArray(var, coords=coords, indexes={}, fastpath=True)
+    for dim in list(da.dims):
+        da = da.set_xindex(dim, ArrayIndex)
+    return da

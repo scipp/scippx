@@ -10,7 +10,7 @@ from scippx.array_property import Unit, Quantity
 
 
 def test_basics():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
     da = xr.DataArray(dims=('x', ), data=data, coords={'x': np.arange(4)})
@@ -30,7 +30,7 @@ def test_basics():
 
 
 def test_method():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
     da = xr.DataArray(dims=('x', ), data=data, coords={'x': np.arange(4)})
@@ -40,7 +40,7 @@ def test_method():
 
 
 def test_mask_array():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
     masked = sx.MultiMaskArray(data,
@@ -56,7 +56,7 @@ def test_mask_array():
 
 
 def test_mask_array_masks_setitem():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
     masked = sx.MultiMaskArray(data,
@@ -76,7 +76,7 @@ def test_mask_array_masks_setitem():
 
 
 def test_setattr():
-    vectors = sx.VectorArray(np.arange(15).reshape(3, 5), ['vx', 'vy', 'vz'])
+    vectors = sx.VectorArray(np.arange(15).reshape(5, 3), ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
     masked = sx.MultiMaskArray(data,
@@ -88,7 +88,7 @@ def test_setattr():
 
 
 def test_dask():
-    array = dask.array.arange(15).reshape(3, 5)
+    array = dask.array.arange(15).reshape(5, 3)
     vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
@@ -104,7 +104,7 @@ def test_dask():
 # np.empty(...., like=...) cannot cope with nesting (tried edit in
 # dask/array/core.py:5288). Changing to use np.empy_like works!
 def test_dask_chunked_masks():
-    array = np.arange(15).reshape(3, 5)
+    array = np.arange(15).reshape(5, 3)
     vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
