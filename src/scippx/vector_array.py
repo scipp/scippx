@@ -29,8 +29,7 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
 
 
 @implements(np.concatenate)
-def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
-    assert out is None
+def concatenate(args, axis=0, dtype=None, casting="same_kind"):
     values = np.concatenate(tuple(args.values for arg in args),
                             axis=axis,
                             dtype=stype,

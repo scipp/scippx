@@ -38,8 +38,10 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     first, *rest = args
-    # TODO check compatible left and right
-    args = (first.edges, ) + (x.right for x in rest)
+    for left, right in zip(args[:-1], args[1:]):
+        if left.edges[-1] != right.edges[0]:
+            raise ValueError("Incompatible value at edge bounds")
+    args = (first.edges, ) + tuple(x.right for x in rest)
     return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))
 
 
@@ -54,14 +56,14 @@ def amax(a, axis=None):
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def __init__(self, edges):
-        assert edges.ndim == 1  # TODO
-        # TODO check increasing
-        self._values = edges
+        assert edges.ndim >= 1
+        assert edges.shape[-1] != 1  # must be 0 or >=2
+        self._edges = edges
 
     @property
     def shape(self):
         # TODO >1d
-        return (self.edges.shape[0] - 1, )
+        return self._edges.shape[:-1] + (self._edges.shape[-1] -1, )
 
     @property
     def dtype(self):
@@ -73,50 +75,53 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     @property
     def edges(self):
-        return self._values
+        return self._edges
 
     @property
     def left(self):
-        return self._values[:-1]
+        return self.edges[..., :-1]
 
     def center(self):
         return 0.5 * (self.right - self.left)
 
     @property
     def right(self):
-        return self._values[1:]
+        return self._edges[..., 1:]
 
     def __len__(self):
-        return len(self._values) - 1
+        return len(self._edges) - 1
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(shape={self.shape}, edges={self._values})"
+        return f"{self.__class__.__name__}(shape={self.shape}, edges={self._edges})"
 
     def __getitem__(self, key):
+        # TODO figure out if key touches inner dim
         if isinstance(key, tuple):
             key = key[0]  # TODO
         if isinstance(key, int):
             # TODO shape? return class Interval?
-            return self.__class__(self._values[key:key + 2])
+            return self.__class__(self._edges[key:key + 2])
         else:
-            return self.__class__(self._values[slice(key.start, key.stop + 1)])
+            stop = None if key.stop is None else key.stop + 1
+            return self.__class__(self._edges[slice(key.start, stop)])
 
     def __setitem__(self, key, value):
+        # TODO figure out if key touches inner dim
         if isinstance(key, tuple) and len(key) == 1:
             key = key[0]
         if isinstance(key, slice):
             start = key.start
-            stop = key.stop
-            key = slice(start, stop + 1)
+            stop = None if key.stop is None else key.stop + 1
+            key = slice(start, stop)
         self.edges[key] = value.edges
 
     def __array__(self, dtype=None):
-        # TODO Should this return midpoints? Or self.left?
-        return self._values.__array__()
+        # TODO Should this raise?
+        return self.edges.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffer."""
-        return self.__class__(copy(self._values))
+        return self.__class__(copy(self._edges))
 
     def _rewrap_content(self, content):
         return self.__class__(content)
@@ -142,9 +147,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
                                "Try summing the `centers()` or `edges`.")
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        # Note: this allows subclasses that don't override
-        # __array_function__ to handle VectorArray objects
-        if not all(issubclass(t, VectorArray) for t in types):
+        if not all(issubclass(t, BinEdgeArray) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
