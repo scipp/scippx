@@ -67,7 +67,7 @@ class Masks:
         yield from self._masks
 
 
-class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
+class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def __init__(self, values, masks=None):
         self._values = values
@@ -112,8 +112,6 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
 
     def __array__(self, dtype=None):
         raise RuntimeError("Cannot convert MultiMaskArray to ndarray")
-        # TODO apply masks?
-        return self._values.__array__()
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffers."""
@@ -156,6 +154,10 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             masks = {}
             for key, mask in self._masks.items():
                 if hasattr(mask, '__array_property__'):
+                    # This illustrates a potential wider problem: If our duck array
+                    # may wrap *multiple* other arrays we may need to operate on all of
+                    # them. For example, we may imagine a RecordArray implemented as a
+                    # dict of arrays, each of which may be a dask array.
                     try:
                         nop = lambda x: x
                         # Hack for dask xcompute: call explicit
