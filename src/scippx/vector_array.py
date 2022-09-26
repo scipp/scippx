@@ -101,8 +101,15 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
     def ndim(self):
         return self._values.ndim - 1
 
+    def _extend_index(self, index):
+        """Extend index to avoid `...` passed by caller interfering with internal axis"""
+        if isinstance(index, tuple):
+            return index + (slice(None), )
+        else:
+            return (index, slice(None))
+
     def __getitem__(self, index):
-        return VectorArray(self._values[index], self.field_names)
+        return VectorArray(self._values[self._extend_index(index)], self.field_names)
 
     def _require_same_field_names(self, other):
         if other.field_names != self.field_names:
@@ -110,9 +117,9 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
                 f"Incompatible VectorArray(field_names={other.field_names}), "
                 f"expected {self.field_names}.")
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, index, value):
         self._require_same_field_names(value)
-        self.values[key] = value.values
+        self.values[self._extend_index(index)] = value.values
 
     @property
     def dtype(self):

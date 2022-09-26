@@ -73,3 +73,8 @@ def test_setitem_incompatible_field_names_raises_ValueError():
     vec2 = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['u', 'v', 'w'])
     with pytest.raises(ValueError):
         vec1[...] = vec2
+
+
+def test_getitem_ellipsis():
+    vectors = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
+    np.testing.assert_array_equal(vectors[..., 1], [4, 5, 6])
