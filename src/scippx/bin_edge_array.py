@@ -4,18 +4,7 @@
 import numpy as np
 import numpy.lib.mixins
 from copy import copy, deepcopy
-
-
-def wrap_result(wrap):
-
-    def decorator(callable):
-
-        def func(*args, **kwargs):
-            return wrap(callable(*args, **kwargs))
-
-        return func
-
-    return decorator
+from .array_attr import ArrayAttrMixin, rewrap_result
 
 
 def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
@@ -47,7 +36,7 @@ def amax(a, axis=None):
         return np.amax(a.edges, axis=None)
 
 
-class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
+class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def __init__(self, edges):
         assert edges.ndim == 1  # TODO
@@ -143,17 +132,18 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                                "Try summing the `centers()` or `edges`.")
         return NotImplemented
 
+    def _rewrap_content(self, content):
+        return self.__class__(content)
+
+    def _unwrap_content(self, obj):
+        # TODO Do we need to verify shape?
+        return obj.edges
+
     def __array_property__(self, name, wrap, unwrap):
         if name == 'left':
             return wrap(self.left)
         if name == 'right':
             return wrap(self.right)
         if name == 'center':
-            return wrap_result(wrap)(self.center)
-        if hasattr(self._values, '__array_property__'):
-            wrap_ = lambda x: wrap(self.__class__(x))
-            unwrap_ = unwrap  # TODO action required?
-            return self._values.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
-        # TODO Mechanism for reporting entire stack of searched duck arrays in
-        # exception message.
-        raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
+            return rewrap_result(wrap)(self.center)
+        return self._forward_array_getattr_to_content(name, wrap, unwrap)
