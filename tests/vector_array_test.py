@@ -22,6 +22,27 @@ def test_add_raises_if_different_vectors():
         vec1 + vec2
 
 
+def test_add_raises_with_ndarray_holding_vector():
+    vec1 = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
+    vec2 = np.array([[1, 1, 1], [2, 2, 2]])
+    with pytest.raises(ValueError):
+        vec1 + vec2
+
+
+def test_add_raises_with_ndarray_holding_scalar():
+    vec1 = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
+    scalar = np.array([1, 2])
+    with pytest.raises(ValueError):
+        vec1 + scalar
+
+
+def test_mul_works_with_ndarray_holding_scalar():
+    vec = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
+    scalar = np.array([1, 2])
+    result = vec * scalar
+    np.testing.assert_array_equal(result.values, [[1, 2, 3], [8, 10, 12]])
+
+
 def test_mul_raises():
     vec = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
     with pytest.raises(ValueError):

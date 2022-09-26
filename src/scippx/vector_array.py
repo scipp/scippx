@@ -128,6 +128,18 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
     def values(self):
         return self._values
 
+    def _rewrap_content(self, content):
+        return self.__class__(content, self.field_names)
+
+    def _unwrap_content(self, obj):
+        if hasattr(obj, 'shape'):
+            if isinstance(obj, VectorArray):
+                self._require_same_field_names(obj)
+                return obj.values
+            else:
+                return obj[..., np.newaxis]  # scalar should apply to all vector comps
+        return obj  # scalar such as int or float
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method == '__call__':
             arrays = []
@@ -135,18 +147,16 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             for x in inputs:
                 if isinstance(x, VectorArray):
                     vector_count += 1
-                    if x.field_names != self.field_names:
-                        raise ValueError(f"Incompatible field names {x.field_names}")
-                    arrays.append(x._values)
-                else:
-                    arrays.append(x)
+                arrays.append(self._unwrap_content(x))
             if ufunc == np.multiply and vector_count > 1:
                 raise ValueError("Vectors cannot be multiplied. Did you mean dot()?")
+            if ufunc in (np.add, np.subtract) and vector_count != len(arrays):
+                raise ValueError(f"Cannot use {ufunc} with vector and scalar")
             if (out := kwargs.get('out')) is not None:
-                kwargs['out'] = tuple(
-                    [v._values if isinstance(v, VectorArray) else v for v in out])
-            return self.__class__(ufunc(*arrays, **kwargs),
-                                  field_names=self.field_names)
+                kwargs['out'] = tuple([self._unwrap_content(v) for v in out])
+            # TODO Careful here: Do we need anything extra to avoid NumPy interference
+            # with the "vector axis"?
+            return self._rewrap_content(ufunc(*arrays, **kwargs))
         else:
             return NotImplemented
 
@@ -158,13 +168,6 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         if not all(issubclass(t, VectorArray) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
-
-    def _rewrap_content(self, content):
-        return self.__class__(content, self.field_names)
-
-    def _unwrap_content(self, obj):
-        self._require_same_field_names(obj)
-        return obj.values
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'fields':

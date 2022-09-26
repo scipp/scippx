@@ -118,6 +118,13 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffer."""
         return self.__class__(copy(self._values))
 
+    def _rewrap_content(self, content):
+        return self.__class__(content)
+
+    def _unwrap_content(self, obj):
+        # TODO Do we need to verify shape?
+        return obj.edges
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method == '__call__':
             arrays = []
@@ -144,13 +151,6 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         if not all(issubclass(t, VectorArray) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
-
-    def _rewrap_content(self, content):
-        return self.__class__(content)
-
-    def _unwrap_content(self, obj):
-        # TODO Do we need to verify shape?
-        return obj.edges
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'left':
