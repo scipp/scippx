@@ -39,7 +39,8 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     first, *rest = args
     for left, right in zip(args[:-1], args[1:]):
-        if left.edges[-1] != right.edges[0]:
+        print(left.edges[-1], right.edges[0])
+        if not np.array_equal(left.edges[-1], right.edges[0]):
             raise ValueError("Incompatible value at edge bounds")
     args = (first.edges, ) + tuple(x.right for x in rest)
     return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))

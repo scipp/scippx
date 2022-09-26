@@ -30,11 +30,19 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
 
 @implements(np.concatenate)
 def concatenate(args, axis=0, dtype=None, casting="same_kind"):
-    values = np.concatenate(tuple(args.values for arg in args),
+    # TODO Check field names
+    values = np.concatenate(tuple(arg.values for arg in args),
                             axis=axis,
-                            dtype=stype,
+                            dtype=dtype,
                             casting=casting)
     return VectorArray(values, args[0]._field_names)
+
+
+@implements(np.array_equal)
+def array_equal(a1, a2, equal_nan=False):
+    if a1.field_names != a2.field_names:
+        raise RuntimeError("Cannot compare VectorArray with different field names")
+    return np.array_equal(a1.values, a2.values, equal_nan=equal_nan)
 
 
 @implements(np.dot)
