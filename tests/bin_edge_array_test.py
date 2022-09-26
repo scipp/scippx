@@ -1,5 +1,6 @@
 import numpy as np
 import scippx as sx
+import pytest
 from numpy.testing import assert_array_equal
 
 
@@ -23,3 +24,9 @@ def test_ufuncs():
     edges = sx.BinEdgeArray(np.arange(5))
     edges += 1
     assert_array_equal(edges.edges, np.arange(1, 6))
+
+
+def test_ufuncs_raise_with_ndarray():
+    edges = sx.BinEdgeArray(np.arange(5))
+    with pytest.raises(AttributeError):
+        edges + np.arange(5)

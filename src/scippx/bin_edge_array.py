@@ -123,19 +123,15 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def _unwrap_content(self, obj):
         # TODO Do we need to verify shape?
-        return obj.edges
+        if hasattr(obj, 'shape'):
+            return obj.edges
+        return obj  # scalar such as int or float
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method == '__call__':
-            arrays = []
-            for x in inputs:
-                if isinstance(x, BinEdgeArray):
-                    arrays.append(x._values)
-                else:
-                    arrays.append(x)
+            arrays = [self._unwrap_content(x) for x in inputs]
             if (out := kwargs.get('out')) is not None:
-                kwargs['out'] = tuple(
-                    [v._values if isinstance(v, BinEdgeArray) else v for v in out])
+                kwargs['out'] = tuple(self._unwrap_content(v) for v in out)
             return self.__class__(ufunc(*arrays, **kwargs))
         else:
             return NotImplemented
