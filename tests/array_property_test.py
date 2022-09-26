@@ -119,8 +119,8 @@ def test_dask_chunked_masks():
     # pint does not implement NEP-18 so np.empty_like strips the unit
     # assert result.units == Unit('m/s')
     assert 'mask1' in result.masks
-    assert_array_equal(result.left.fields['vx'].values, [0, 2, 4, 6])
-    assert_array_equal(result.right.fields['vz'].values, [22, 24, 26, 28])
+    assert_array_equal(result.left.fields['vx'].unmasked, [0, 6, 12, 18])
+    assert_array_equal(result.right.fields['vz'].unmasked, [10, 16, 22, 28])
 
 
 def test_VectorArray_forwards_array_attr_to_content():

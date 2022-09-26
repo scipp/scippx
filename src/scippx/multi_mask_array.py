@@ -132,7 +132,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(values, masks)
 
     def __array_property__(self, name, wrap, unwrap):
-        if name == 'data':  # This is probably a bad idea since xr.DataArray.data exists
+        if name == 'unmasked':
             return wrap(self.data)
         if name == 'masks':
             return Masks(self, wrap=wrap, unwrap=unwrap)
