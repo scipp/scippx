@@ -177,8 +177,6 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        # Note: this allows subclasses that don't override
-        # __array_function__ to handle VectorArray objects
         if not all(issubclass(t, VectorArray) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)

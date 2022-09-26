@@ -5,8 +5,37 @@ import numpy as np
 import numpy.lib.mixins
 from copy import copy, deepcopy
 from functools import reduce
+from .array_attr import ArrayAttrMixin
+
+HANDLED_FUNCTIONS = {}
 
 
+def implements(numpy_function):
+    """Register an __array_function__ implementation for MultiMaskArray objects."""
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+
+    return decorator
+
+
+@implements(np.concatenate)
+def concatenate(args, axis=0, dtype=None, casting="same_kind"):
+    data = np.concatenate(tuple(arg.data for arg in args),
+                          axis=axis,
+                          dtype=dtype,
+                          casting=casting)
+    masks = {}
+    for mask in args[0].masks:
+        masks[mask] = np.concatenate(tuple(arg.masks[mask] for arg in args),
+                                     axis=axis,
+                                     dtype=dtype,
+                                     casting=casting)
+    return MultiMaskArray(data, masks)
+
+
+@implements(np.amax)
 def amax(a, axis=None):
     # TODO Handle multi-dim case and apply only relevant masks
     mask = a._flat_mask()
@@ -33,6 +62,9 @@ class Masks:
 
     def __contains__(self, key):
         return key in self._masks
+
+    def __iter__(self):
+        yield from self._masks
 
 
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
@@ -109,27 +141,11 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not all(issubclass(t, self.__class__) for t in types):
+        if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        if func == np.amax:
-            return amax(*args, **kwargs)
-        # TODO handle more args, this works for concatenate and broadcast_arrays
-        def values(arg):
-            if isinstance(arg, MultiMaskArray):
-                return arg.data
-            if isinstance(arg, list):
-                return [values(x) for x in arg]
-            return arg
-
-        arrays = tuple([values(x) for x in args])
-        values = func(*arrays, **kwargs)
-        if len(args) == 0:
-            masks = None
-        else:
-            masks = {}
-            for name in self._masks:
-                masks[name] = func([x._masks[name] for x in args[0]], **kwargs)
-        return self.__class__(values, masks)
+        if not all(issubclass(t, MultiMaskArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'unmasked':
