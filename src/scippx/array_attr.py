@@ -15,6 +15,30 @@ def rewrap_result(wrap):
     return decorator
 
 
+# Case 1:
+# - MultiMaskArray calls Quantity.__array_getattr__('units')
+# - It never calls `wrap` so this case is not handled here
+# Case 2:
+# - MultiMaskArray calls BinEdgeArray.__array_getattr__('left')
+# - Wrapper should apply left to all masks
+# - Call MultiMaskArray._rewrap_content
+def make_wrap(wrap, attr, extra_cols=None):
+
+    def do_wrap(obj):
+        if extra_cols is None:
+            return wrap(out)
+        cols = []
+        nop = lambda x: x
+        for col in extra_cols:
+            try:
+                cols.append(col.__array_property__(attr, wrap=nop, unwrap=nop))
+            except AttributeError:
+                cols.append(col)
+        return wrap((obj, ) + tuple(cols))
+
+    return do_wrap
+
+
 class ArrayAttrMixin:
 
     def __getattr__(self, name):
@@ -27,20 +51,11 @@ class ArrayAttrMixin:
         unwrap_ = lambda x: unwrap(self._unwrap_content(x))
         content = self._unwrap_content(self)
         if isinstance(content, tuple):
-            cols = []
-            # At least one should pass
-            ok = False
-            nop = lambda x: x
-            for col in content:
-                try:
-                    # TODO Do we need to use unwrap_ here?
-                    cols.append(col.__array_property__(name, wrap=nop, unwrap=nop))
-                    ok = True
-                except AttributeError:
-                    cols.append(col)
-            if ok:
-                return wrap_(tuple(cols))
-        elif hasattr(content, '__array_property__'):
+            content, *extra_cols = content
+            wrap_ = make_wrap(wrap_, name, extra_cols)
+        else:
+            wrap_ = make_wrap(wrap_, name)
+        if hasattr(content, '__array_property__'):
             return content.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
