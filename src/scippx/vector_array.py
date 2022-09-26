@@ -2,9 +2,23 @@ from typing import List
 import numpy as np
 import numpy.lib.mixins
 
+HANDLED_FUNCTIONS = {}
 
+
+def implements(numpy_function):
+    """Register an __array_function__ implementation for MyArray objects."""
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+
+    return decorator
+
+
+@implements(np.empty_like)
 def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
-    shape = (shape if isinstance(shape, tuple) else (shape, )) + (3, )
+    nfield = len(prototype.fields)
+    shape = (shape if isinstance(shape, tuple) else (shape, )) + (nfield, )
     values = np.empty_like(prototype.values,
                            dtype=dtype,
                            order=order,
@@ -13,6 +27,7 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
     return VectorArray(values, prototype._field_names)
 
 
+@implements(np.concatenate)
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     values = np.concatenate(tuple(args.values for arg in args),
@@ -22,6 +37,7 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     return VectorArray(values, args[0]._field_names)
 
 
+@implements(np.amax)
 def amax(a, axis=None):
     if axis is not None and len(axis) and max(axis) >= a.ndim:
         # Avoid comuting over internal axes
@@ -29,6 +45,11 @@ def amax(a, axis=None):
     return VectorArray(np.amax(a.values, axis=axis), a._field_names)
 
 
+def sum(a, axis=None):
+    if axis is not None and len(axis) and max(axis) >= a.ndim:
+        # Avoid comuting over internal axes
+        raise ValueError("Axis index too large")
+    return VectorArray(np.amax(a.values, axis=axis), a._field_names)
 
 
 class Fields:
@@ -37,6 +58,9 @@ class Fields:
         self._obj = obj
         self._wrap = (lambda x: x) if wrap is None else wrap
         self._unwrap = (lambda x: x) if unwrap is None else unwrap
+
+    def __len__(self):
+        return len(self._obj._field_names)
 
     def __getitem__(self, key):
         field = self._obj.values[..., self._obj._field_names.index(key)]
@@ -107,15 +131,13 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not all(issubclass(t, self.__class__) for t in types):
+        if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        if func == np.concatenate:
-            return concatenate(*args, **kwargs)
-        if func == np.empty_like:
-            return empty_like(*args, **kwargs)
-        if func == np.amax:
-            return amax(*args, **kwargs)
-        return NotImplemented
+        # Note: this allows subclasses that don't override
+        # __array_function__ to handle MyArray objects
+        if not all(issubclass(t, MyArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'fields':

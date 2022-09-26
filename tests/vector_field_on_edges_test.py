@@ -12,4 +12,4 @@ def test_basics():
     da + da
     np.testing.assert_array_equal(da.data.left.fields['vy'], [3, 6, 9, 12])
     np.testing.assert_array_equal(da.data.right.fields['vy'], [6, 9, 12, 15])
-    np.testing.assert_array_equal(da.data.values.fields['vy'], [3, 6, 9, 12, 15])
+    np.testing.assert_array_equal(da.data.edges.fields['vy'], [3, 6, 9, 12, 15])
