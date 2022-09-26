@@ -6,7 +6,7 @@ HANDLED_FUNCTIONS = {}
 
 
 def implements(numpy_function):
-    """Register an __array_function__ implementation for MyArray objects."""
+    """Register an __array_function__ implementation for VectorArray objects."""
 
     def decorator(func):
         HANDLED_FUNCTIONS[numpy_function] = func
@@ -39,7 +39,7 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
 
 @implements(np.dot)
 def dot(a, b):
-    # Note difference to np.dot since our "dtype" enables a simpler and better defition
+    # Note difference to np.dot: our "dtype" enables a simpler and better definition
     return np.einsum('...i,...i->...', a.values, b.values)
 
 
@@ -51,11 +51,12 @@ def amax(a, axis=None):
     return VectorArray(np.amax(a.values, axis=axis), a._field_names)
 
 
+@implements(np.sum)
 def sum(a, axis=None):
     if axis is not None and len(axis) and max(axis) >= a.ndim:
         # Avoid comuting over internal axes
         raise ValueError("Axis index too large")
-    return VectorArray(np.amax(a.values, axis=axis), a._field_names)
+    return VectorArray(np.sum(a.values, axis=axis), a._field_names)
 
 
 class Fields:
@@ -80,13 +81,17 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     """Array of vectors with named components (fields)."""
 
     def __init__(self, values: np.ndarray, field_names: List[str]):
-        # Assuming a structure-of-array implementation
+        # Array-of-structure implementation
         assert values.shape[-1] == len(field_names)
         self._values = values
         self._field_names = field_names
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(field_names={self._field_names}, shape={self.shape}, values={self.values})"
+        return f"{self.__class__.__name__}(field_names={self.field_names}, shape={self.shape}, values={self.values})"
+
+    @property
+    def field_names(self):
+        return self._field_names
 
     @property
     def shape(self):
@@ -97,9 +102,13 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         return self._values.ndim - 1
 
     def __getitem__(self, index):
-        return VectorArray(self._values[index], self._field_names)
+        return VectorArray(self._values[index], self.field_names)
 
     def __setitem__(self, key, value):
+        if value.field_names != self.field_names:
+            raise ValueError(
+                f"Incompatible VectorArray(field_names={value.field_names}), "
+                f"expected {self.field_names}.")
         self.values[key] = value.values
 
     @property
@@ -122,8 +131,8 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             for x in inputs:
                 if isinstance(x, VectorArray):
                     vector_count += 1
-                    if x._field_names != self._field_names:
-                        raise ValueError(f"Incompatible field names {x._field_names}")
+                    if x.field_names != self.field_names:
+                        raise ValueError(f"Incompatible field names {x.field_names}")
                     arrays.append(x._values)
                 else:
                     arrays.append(x)
@@ -133,7 +142,7 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
                 kwargs['out'] = tuple(
                     [v._values if isinstance(v, VectorArray) else v for v in out])
             return self.__class__(ufunc(*arrays, **kwargs),
-                                  field_names=self._field_names)
+                                  field_names=self.field_names)
         else:
             return NotImplemented
 
@@ -154,3 +163,7 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             unwrap_ = unwrap  # TODO strip and check field names
             return self._values.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
+
+    def __getattr__(self, name: str):
+        # Top-level, wrap is no-op
+        return self.__array_property__(name, wrap=lambda x: x, unwrap=lambda x: x)
