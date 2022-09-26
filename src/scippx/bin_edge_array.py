@@ -6,7 +6,20 @@ import numpy.lib.mixins
 from copy import copy, deepcopy
 from .array_attr import ArrayAttrMixin, rewrap_result
 
+HANDLED_FUNCTIONS = {}
 
+
+def implements(numpy_function):
+    """Register an __array_function__ implementation for VectorArray objects."""
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+
+    return decorator
+
+
+@implements(np.empty_like)
 def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
     assert len(shape) == 1
     if shape[0] == 0:
@@ -21,6 +34,7 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
     return BinEdgeArray(edges)
 
 
+@implements(np.concatenate)
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
     first, *rest = args
@@ -29,6 +43,7 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     return BinEdgeArray(np.concatenate(args, axis=axis, dtype=dtype))
 
 
+@implements(np.amax)
 def amax(a, axis=None):
     if axis is not None and axis != (a.ndim - 1):  # TODO check tuple
         return BinEdgeArray(np.amax(a.edges, axis=axis))
@@ -119,18 +134,16 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             return NotImplemented
 
     def __array_function__(self, func, types, args, kwargs):
-        if not all(issubclass(t, self.__class__) for t in types):
-            return NotImplemented
-        if func == np.concatenate:
-            return concatenate(*args, **kwargs)
-        if func == np.empty_like:
-            return empty_like(*args, **kwargs)
-        if func == np.amax:
-            return amax(*args, **kwargs)
         if func == np.sum:
             raise RuntimeError("Summing BinEdgeArray is not possible. "
                                "Try summing the `centers()` or `edges`.")
-        return NotImplemented
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        # Note: this allows subclasses that don't override
+        # __array_function__ to handle VectorArray objects
+        if not all(issubclass(t, VectorArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def _rewrap_content(self, content):
         return self.__class__(content)
