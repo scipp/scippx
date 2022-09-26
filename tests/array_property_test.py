@@ -121,3 +121,12 @@ def test_dask_chunked_masks():
     assert 'mask1' in result.masks
     assert_array_equal(result.left.fields['vx'].values, [0, 2, 4, 6])
     assert_array_equal(result.right.fields['vz'].values, [22, 24, 26, 28])
+
+
+def test_VectorArray_forwards_array_attr_to_content():
+    data = np.arange(15).reshape(5, 3)
+    quantity = Quantity(data, 'm/s')
+    vectors = sx.VectorArray(quantity, ['vx', 'vy', 'vz'])
+    assert vectors.units == Unit('m/s')
+    assert isinstance(vectors.magnitude, sx.VectorArray)
+    np.testing.assert_array_equal(vectors.magnitude, data)

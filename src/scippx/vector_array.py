@@ -1,6 +1,7 @@
 from typing import List
 import numpy as np
 import numpy.lib.mixins
+from .array_attr import ArrayAttrMixin
 
 HANDLED_FUNCTIONS = {}
 
@@ -77,7 +78,7 @@ class Fields:
         self._obj.values[..., self._obj._field_names.index(key)] = self._unwrap(value)
 
 
-class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
+class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
     """Array of vectors with named components (fields)."""
 
     def __init__(self, values: np.ndarray, field_names: List[str]):
@@ -104,11 +105,14 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
     def __getitem__(self, index):
         return VectorArray(self._values[index], self.field_names)
 
-    def __setitem__(self, key, value):
-        if value.field_names != self.field_names:
+    def _require_same_field_names(self, other):
+        if other.field_names != self.field_names:
             raise ValueError(
-                f"Incompatible VectorArray(field_names={value.field_names}), "
+                f"Incompatible VectorArray(field_names={other.field_names}), "
                 f"expected {self.field_names}.")
+
+    def __setitem__(self, key, value):
+        self._require_same_field_names(value)
         self.values[key] = value.values
 
     @property
@@ -155,15 +159,14 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def _rewrap_content(self, content):
+        return self.__class__(content, self.field_names)
+
+    def _unwrap_content(self, obj):
+        self._require_same_field_names(obj)
+        return obj.values
+
     def __array_property__(self, name, wrap, unwrap):
         if name == 'fields':
             return Fields(self, wrap=wrap, unwrap=unwrap)
-        if hasattr(self._values, '__array_property__'):
-            wrap_ = lambda x: wrap(self.__class__(x, self._field_names))
-            unwrap_ = unwrap  # TODO strip and check field names
-            return self._values.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
-        raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
-
-    def __getattr__(self, name: str):
-        # Top-level, wrap is no-op
-        return self.__array_property__(name, wrap=lambda x: x, unwrap=lambda x: x)
+        return self._forward_array_getattr_to_content(name, wrap, unwrap)
