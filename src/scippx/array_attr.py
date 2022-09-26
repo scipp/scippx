@@ -23,10 +23,24 @@ class ArrayAttrMixin:
         return self.__array_property__(name, wrap=lambda x: x, unwrap=lambda x: x)
 
     def _forward_array_getattr_to_content(self, name, wrap, unwrap):
+        wrap_ = lambda x: wrap(self._rewrap_content(x))
+        unwrap_ = lambda x: unwrap(self._unwrap_content(x))
         content = self._unwrap_content(self)
-        if hasattr(content, '__array_property__'):
-            wrap_ = lambda x: wrap(self._rewrap_content(x))
-            unwrap_ = lambda x: unwrap(self._unwrap_content(x))
+        if isinstance(content, tuple):
+            cols = []
+            # At least one should pass
+            ok = False
+            nop = lambda x: x
+            for col in content:
+                try:
+                    # TODO Do we need to use unwrap_ here?
+                    cols.append(col.__array_property__(name, wrap=nop, unwrap=nop))
+                    ok = True
+                except AttributeError:
+                    cols.append(col)
+            if ok:
+                return wrap_(tuple(cols))
+        elif hasattr(content, '__array_property__'):
             return content.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 

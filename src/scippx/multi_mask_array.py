@@ -71,8 +71,8 @@ class Masks:
 
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
-    def __init__(self, values, masks=None):
-        self._values = values
+    def __init__(self, data, masks=None):
+        self._data = data
         self._masks = {}
         for name, mask in {} if masks is None else masks.items():
             self.masks[name] = mask
@@ -91,7 +91,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     @property
     def data(self):
-        return self._values
+        return self._data
 
     @property
     def masks(self):
@@ -101,15 +101,15 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         return reduce(lambda x, y: np.logical_or(x, y), self._masks.values())
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._values}, masks={self._masks})"
+        return f"{self.__class__.__name__}({self._data}, masks={self._masks})"
 
     def __getitem__(self, key):
-        return self.__class__(self._values[key],
+        return self.__class__(self._data[key],
                               {name: mask[key]
                                for name, mask in self._masks.items()})
 
     def __setitem__(self, key, value):
-        self._values[key] = value._values
+        self._data[key] = value._data
         # TODO what does this do if masks dict empty?
         for name, mask in value._masks.items():
             self._masks[name][key] = mask
@@ -119,7 +119,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def __copy__(self):
         """Copy behaving like NumPy copy, i.e., making a copy of the buffers."""
-        return self.__class__(copy(self._values), deepcopy(self._masks))
+        return self.__class__(copy(self._data), deepcopy(self._masks))
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method == '__call__':
@@ -127,7 +127,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             masks = {}
             for x in inputs:
                 if isinstance(x, MultiMaskArray):
-                    arrays.append(x._values)
+                    arrays.append(x._data)
                     for key, mask in x._masks.items():
                         if key in masks:
                             masks[key] = np.logical_or(masks[key], mask)
@@ -149,11 +149,21 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def _rewrap_content(self, content):
+        data, *masks = content
+        return self.__class__(data, dict(zip(self._masks, masks)))
+
+    def _unwrap_content(self, obj):
+        # Unlike other examples such as VectorArray or Quantity, our content consists
+        # of *multiple* arrays.
+        return (obj.data,) + tuple(obj._masks.values())
+
     def __array_property__(self, name, wrap, unwrap):
         if name == 'unmasked':
             return wrap(self.data)
         if name == 'masks':
             return Masks(self, wrap=wrap, unwrap=unwrap)
+        return self._forward_array_getattr_to_content(name, wrap, unwrap)
         if hasattr(self.data, '__array_property__'):
             masks = {}
             for key, mask in self._masks.items():
@@ -162,6 +172,8 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
                     # may wrap *multiple* other arrays we may need to operate on all of
                     # them. For example, we may imagine a RecordArray implemented as a
                     # dict of arrays, each of which may be a dask array.
+                    # The wrapped arrays may also be heterogenous, so some may require
+                    # forwarding while some may not.
                     try:
                         nop = lambda x: x
                         proto_mask = mask.__array_property__(name, wrap=nop, unwrap=nop)
@@ -169,6 +181,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
                         masks[key] = mask
                     else:
                         # Hack for dask xcompute: call explicit
+                        # TODO Problem: this evaluates immediately before called!
                         masks[key] = proto_mask()
                 else:
                     masks[key] = mask
