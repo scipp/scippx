@@ -54,6 +54,12 @@ def amax(a, axis=None):
 
 
 class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
+    """
+    Array of values stored on the bin/cell bounaries.
+
+    Wraps an underlying array of values of shape=(..., N+1) as a duck array
+    of shape=(..., N).
+    """
 
     def __init__(self, edges):
         assert edges.ndim >= 1
@@ -62,8 +68,9 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     @property
     def shape(self):
-        # TODO >1d
-        return self._edges.shape[:-1] + (self._edges.shape[-1] -1, )
+        if self._edges.shape[-1] == 0:
+            return self._edges.shape
+        return self._edges.shape[:-1] + (self._edges.shape[-1] - 1, )
 
     @property
     def dtype(self):
@@ -89,24 +96,28 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         return self._edges[..., 1:]
 
     def __len__(self):
-        return len(self._edges) - 1
+        return self.shape[0]
 
     def __repr__(self):
         return f"{self.__class__.__name__}(shape={self.shape}, edges={self._edges})"
 
     def __getitem__(self, key):
-        # TODO figure out if key touches inner dim
+        if self.ndim != 1:
+            raise NotImplementedError("Slicing for non-1-D edges not implemented")
         if isinstance(key, tuple):
             key = key[0]  # TODO
         if isinstance(key, int):
             # TODO shape? return class Interval?
             return self.__class__(self._edges[key:key + 2])
         else:
-            stop = None if key.stop is None else key.stop + 1
-            return self.__class__(self._edges[slice(key.start, stop)])
+            start, stop, stride = key.indices(self.shape[-1])
+            if stop > start:
+                stop += 1
+            return self.__class__(self._edges[slice(start, stop, stride)])
 
     def __setitem__(self, key, value):
-        # TODO figure out if key touches inner dim
+        if self.ndim != 1:
+            raise NotImplementedError("Slicing for non-1-D edges not implemented")
         if isinstance(key, tuple) and len(key) == 1:
             key = key[0]
         if isinstance(key, slice):
