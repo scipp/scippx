@@ -46,32 +46,36 @@ def amax(a, axis=None):
 class Masks:
 
     def __init__(self, obj, wrap=None, unwrap=None):
-        self._masks = obj._masks
+        self._obj = obj
         self._wrap = (lambda x: x) if wrap is None else wrap
         self._unwrap = (lambda x: x) if unwrap is None else unwrap
 
     def __len__(self):
         return len(self._masks)
 
-    def __getitem__(self, key):
-        mask = self._masks[key]
+    def __getitem__(self, name):
+        mask = self._obj._masks[name]
         return self._wrap(mask)
 
-    def __setitem__(self, key, value):
-        self._masks[key] = self._unwrap(value)
+    def __setitem__(self, name, mask):
+        if mask.shape != self._obj.shape:
+            raise ValueError(f"Incompatible shape={mask.shape} for mask '{name}'")
+        self._obj._masks[name] = self._unwrap(mask)
 
-    def __contains__(self, key):
-        return key in self._masks
+    def __contains__(self, name):
+        return name in self._obj._masks
 
     def __iter__(self):
-        yield from self._masks
+        yield from self._obj._masks
 
 
 class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def __init__(self, values, masks=None):
         self._values = values
-        self._masks = masks if masks is not None else {}
+        self._masks = {}
+        for name, mask in {} if masks is None else masks.items():
+            self.masks[name] = mask
 
     @property
     def shape(self):
@@ -160,11 +164,12 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
                     # dict of arrays, each of which may be a dask array.
                     try:
                         nop = lambda x: x
-                        # Hack for dask xcompute: call explicit
-                        masks[key] = mask.__array_property__(name, wrap=nop,
-                                                             unwrap=nop)()
+                        proto_mask = mask.__array_property__(name, wrap=nop, unwrap=nop)
                     except AttributeError:
                         masks[key] = mask
+                    else:
+                        # Hack for dask xcompute: call explicit
+                        masks[key] = proto_mask()
                 else:
                     masks[key] = mask
             wrap_ = lambda x: wrap(self.__class__(x, masks))
