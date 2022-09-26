@@ -5,7 +5,7 @@ from scippx.array_property import Quantity, Unit
 from numpy.testing import assert_array_equal
 
 
-def xtest_callable_content_array_attr():
+def test_callable_content_array_attr():
     data = sx.BinEdgeArray(np.arange(3))
     mask = np.array([True, False])
     edge_mask = sx.BinEdgeArray(np.array([False, False, True]))

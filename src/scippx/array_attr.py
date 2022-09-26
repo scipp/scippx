@@ -8,7 +8,9 @@ def rewrap_result(wrap):
     def decorator(callable):
 
         def func(*args, **kwargs):
-            return wrap(callable(*args, **kwargs))
+            # args and kwargs passed to `wrap` since it may need to call with same args
+            # for extra_cols
+            return wrap(callable(*args, **kwargs), *args, **kwargs)
 
         return func
 
@@ -24,16 +26,23 @@ def rewrap_result(wrap):
 # - Call MultiMaskArray._rewrap_content
 def make_wrap(wrap, attr, extra_cols=None):
 
-    def do_wrap(obj):
+    def do_wrap(obj, *args, **kwargs):
+        # case rewrap_result:
+        # obj is result of call with args and kwargs, need those to apply to extra_cols
         if extra_cols is None:
-            return wrap(out)
+            return wrap(obj)
         cols = []
         nop = lambda x: x
         for col in extra_cols:
             try:
-                cols.append(col.__array_property__(attr, wrap=nop, unwrap=nop))
+                proto_col = col.__array_property__(attr, wrap=nop, unwrap=nop)
             except AttributeError:
                 cols.append(col)
+            else:
+                if hasattr(proto_col, 'shape'):
+                    cols.append(proto_col)
+                else:  # callable we got from rewrap_result
+                    cols.append(proto_col(*args, **kwargs))
         return wrap((obj, ) + tuple(cols))
 
     return do_wrap

@@ -51,7 +51,7 @@ class Masks:
         self._unwrap = (lambda x: x) if unwrap is None else unwrap
 
     def __len__(self):
-        return len(self._masks)
+        return len(self._obj._masks)
 
     def __getitem__(self, name):
         mask = self._obj._masks[name]
@@ -156,36 +156,18 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
     def _unwrap_content(self, obj):
         # Unlike other examples such as VectorArray or Quantity, our content consists
         # of *multiple* arrays.
-        return (obj.data,) + tuple(obj._masks.values())
+        return (obj.data, ) + tuple(obj._masks.values())
 
     def __array_property__(self, name, wrap, unwrap):
         if name == 'unmasked':
             return wrap(self.data)
         if name == 'masks':
             return Masks(self, wrap=wrap, unwrap=unwrap)
+        # This illustrates a potential wider problem: If our duck array
+        # may wrap *multiple* other arrays we may need to operate on all of
+        # them. For example, we may imagine a RecordArray implemented as a
+        # dict of arrays, each of which may be a dask array.
+        # The wrapped arrays may also be heterogenous, so some may require
+        # forwarding while some may not. ArrayAttrMixin tries some magic to deal with
+        # this.
         return self._forward_array_getattr_to_content(name, wrap, unwrap)
-        if hasattr(self.data, '__array_property__'):
-            masks = {}
-            for key, mask in self._masks.items():
-                if hasattr(mask, '__array_property__'):
-                    # This illustrates a potential wider problem: If our duck array
-                    # may wrap *multiple* other arrays we may need to operate on all of
-                    # them. For example, we may imagine a RecordArray implemented as a
-                    # dict of arrays, each of which may be a dask array.
-                    # The wrapped arrays may also be heterogenous, so some may require
-                    # forwarding while some may not.
-                    try:
-                        nop = lambda x: x
-                        proto_mask = mask.__array_property__(name, wrap=nop, unwrap=nop)
-                    except AttributeError:
-                        masks[key] = mask
-                    else:
-                        # Hack for dask xcompute: call explicit
-                        # TODO Problem: this evaluates immediately before called!
-                        masks[key] = proto_mask()
-                else:
-                    masks[key] = mask
-            wrap_ = lambda x: wrap(self.__class__(x, masks))
-            unwrap_ = unwrap  # TODO strip and handle masks
-            return self.data.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
-        raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
