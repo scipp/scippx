@@ -37,6 +37,12 @@ def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     return VectorArray(values, args[0]._field_names)
 
 
+@implements(np.dot)
+def dot(a, b):
+    # Note difference to np.dot since our "dtype" enables a simpler and better defition
+    return np.einsum('...i,...i->...', a.values, b.values)
+
+
 @implements(np.amax)
 def amax(a, axis=None):
     if axis is not None and len(axis) and max(axis) >= a.ndim:
@@ -71,6 +77,7 @@ class Fields:
 
 
 class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
+    """Array of vectors with named components (fields)."""
 
     def __init__(self, values: np.ndarray, field_names: List[str]):
         # Assuming a structure-of-array implementation
@@ -134,8 +141,8 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin):
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
         # Note: this allows subclasses that don't override
-        # __array_function__ to handle MyArray objects
-        if not all(issubclass(t, MyArray) for t in types):
+        # __array_function__ to handle VectorArray objects
+        if not all(issubclass(t, VectorArray) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 

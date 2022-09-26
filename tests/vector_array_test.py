@@ -32,3 +32,9 @@ def test_scale():
     vec = sx.VectorArray(np.array([1, 2, 3]), ['x', 'y', 'z'])
     result = 3 * vec
     np.testing.assert_array_equal(result.values, [3, 6, 9])
+
+
+def test_dot():
+    vec = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
+    result = np.dot(vec, vec)
+    np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
