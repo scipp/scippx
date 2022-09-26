@@ -89,7 +89,9 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         return self.edges[..., :-1]
 
     def center(self):
-        return 0.5 * (self.right - self.left)
+        if self.dtype == bool:
+            return np.logical_or(self.right, self. left)
+        return 0.5 * (self.right + self.left)
 
     @property
     def right(self):
