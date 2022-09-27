@@ -158,7 +158,7 @@ class MultiMaskArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         # of *multiple* arrays.
         return (obj.data, ) + tuple(obj._masks.values())
 
-    def __array_property__(self, name, wrap, unwrap):
+    def __array_getattr__(self, name, wrap, unwrap):
         if name == 'unmasked':
             return wrap(self.data)
         if name == 'masks':

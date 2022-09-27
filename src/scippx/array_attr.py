@@ -35,7 +35,7 @@ def make_wrap(wrap, attr, extra_cols=None):
         nop = lambda x: x
         for col in extra_cols:
             try:
-                proto_col = col.__array_property__(attr, wrap=nop, unwrap=nop)
+                proto_col = col.__array_getattr__(attr, wrap=nop, unwrap=nop)
             except AttributeError:
                 cols.append(col)
             else:
@@ -53,7 +53,7 @@ class ArrayAttrMixin:
     def __getattr__(self, name):
         # Top-level, wrap is no-op
         #TODO __array_getattr_
-        return self.__array_property__(name, wrap=lambda x: x, unwrap=lambda x: x)
+        return self.__array_getattr__(name, wrap=lambda x: x, unwrap=lambda x: x)
 
     def _forward_array_getattr_to_content(self, name, wrap, unwrap):
         wrap_ = lambda x: wrap(self._rewrap_content(x))
@@ -62,9 +62,9 @@ class ArrayAttrMixin:
         if isinstance(content, tuple):
             content, *extra_cols = content
             wrap_ = make_wrap(wrap_, name, extra_cols)
-        if hasattr(content, '__array_property__'):
-            return content.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
+        if hasattr(content, '__array_getattr__'):
+            return content.__array_getattr__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
-    def __array_property__(self, name, wrap, unwrap):
+    def __array_getattr__(self, name, wrap, unwrap):
         return self._forward_array_getattr_to_content(name, wrap, unwrap)

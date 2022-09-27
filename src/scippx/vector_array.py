@@ -181,7 +181,7 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
-    def __array_property__(self, name, wrap, unwrap):
+    def __array_getattr__(self, name, wrap, unwrap):
         if name == 'fields':
             return Fields(self, wrap=wrap, unwrap=unwrap)
         return self._forward_array_getattr_to_content(name, wrap, unwrap)

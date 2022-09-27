@@ -164,7 +164,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
-    def __array_property__(self, name, wrap, unwrap):
+    def __array_getattr__(self, name, wrap, unwrap):
         if name == 'left':
             return wrap(self.left)
         if name == 'right':

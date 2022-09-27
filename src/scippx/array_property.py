@@ -16,14 +16,14 @@ def _quantity_array_property(self, name, wrap, unwrap):
         return self.units
     if name == 'magnitude':
         return wrap(self.magnitude)
-    if hasattr(self.magnitude, '__array_property__'):
+    if hasattr(self.magnitude, '__array_getattr__'):
         wrap_ = lambda x: wrap(self.__class__(x, self.units))
         unwrap_ = unwrap  # TODO strip and handle units
-        return self.magnitude.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
+        return self.magnitude.__array_getattr__(name, wrap=wrap_, unwrap=unwrap_)
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
-setattr(Quantity, '__array_property__', _quantity_array_property)
+setattr(Quantity, '__array_getattr__', _quantity_array_property)
 
 # props accessor is a partial solution, but makes chaining cumbersome:
 #   da.props.left.props.fields['vx']
@@ -41,7 +41,7 @@ setattr(Quantity, '__array_property__', _quantity_array_property)
 #             out.data = x
 #             return out
 #
-#         return self._obj.data.__array_property__(name, wrap=wrap)
+#         return self._obj.data.__array_getattr__(name, wrap=wrap)
 
 
 def _dataarray_array_property(self, name, wrap, unwrap):
@@ -61,19 +61,19 @@ def _dataarray_array_property(self, name, wrap, unwrap):
         # TODO Could accept anything with dims property!
         raise ValueError("Expected xr.DataArray or xr.Variable")
 
-    if hasattr(self.data, '__array_property__'):
-        return self.data.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
+    if hasattr(self.data, '__array_getattr__'):
+        return self.data.__array_getattr__(name, wrap=wrap_, unwrap=unwrap_)
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
 def _dataarray_getattr(self, name: str):
     # Top-level, wrap is no-op
-    return self.__array_property__(name, wrap=lambda x: x, unwrap=lambda x: x)
+    return self.__array_getattr__(name, wrap=lambda x: x, unwrap=lambda x: x)
 
 
 # This is not a nice thing to do, unless this becomes a generally agreed upon solution,
 # i.e., xarray would ship with this.
-setattr(xr.DataArray, '__array_property__', _dataarray_array_property)
+setattr(xr.DataArray, '__array_getattr__', _dataarray_array_property)
 setattr(xr.DataArray, '__getattr__', _dataarray_getattr)
 
 
@@ -84,7 +84,7 @@ def _dask_array_property(self, name, wrap, unwrap):
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
-setattr(dask.array.core.Array, '__array_property__', _dask_array_property)
+setattr(dask.array.core.Array, '__array_getattr__', _dask_array_property)
 
 
 def DataArray(*, dims, data, coords):
