@@ -5,17 +5,28 @@ import pint
 import xarray as xr
 import dask
 from .array_index import ArrayIndex
+from .array_attr import ArrayAccessor
 
 ureg = pint.UnitRegistry(force_ndarray_like=True)
 Unit = ureg.Unit
 Quantity = ureg.Quantity
 
+class QuantityAccessor:
+    def __init__(self, quantity, wrap, unwrap):
+        self._quantity = quantity
+        self._wrap = wrap
+        self._unwrap = unwrap
+
+    def __getattr__(self, attr):
+        return rewrap_result(self._wrap)(getattr(self._quantity, attr))
 
 def _quantity_array_getattr(self, name, wrap, unwrap):
     if name == 'units':
         return self.units
     if name == 'magnitude':
         return wrap(self.magnitude)
+    if name == 'quantity':
+        return ArrayAccessor(self, wrap, unwrap)
     if hasattr(self.magnitude, '__array_getattr__'):
         wrap_ = lambda x: wrap(self.__class__(x, self.units))
         unwrap_ = unwrap  # TODO strip and handle units

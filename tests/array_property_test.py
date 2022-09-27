@@ -101,7 +101,7 @@ def test_dask():
 
 
 # np.empty(...., like=...) cannot cope with nesting (tried edit in
-# dask/array/core.py:5288). Changing to use np.empy_like works!
+# dask/array/core.py:5288). Changing to use np.empty_like works!
 def test_dask_chunked_masks():
     array = np.arange(15).reshape(5, 3)
     vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
@@ -129,3 +129,21 @@ def test_VectorArray_forwards_array_attr_to_content():
     assert vectors.units == Unit('m/s')
     assert isinstance(vectors.magnitude, sx.VectorArray)
     np.testing.assert_array_equal(vectors.magnitude, data)
+
+
+def test_quantity_accessor():
+    array = np.arange(15).reshape(5, 3)
+    vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    masked = sx.MultiMaskArray(data,
+                               masks={'mask1': np.array([False, False, True, False])})
+    da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
+    result = da.quantity.to('km/h')
+    assert isinstance(result, xr.DataArray)
+    assert result.units == Unit('km/h')
+    assert 'mask1' in result.masks
+    result.quantity.ito('m/s')
+    np.testing.assert_array_equal(
+        result.data.data.magnitude.edges.values,
+        da.quantity.to('km/h').quantity.to('m/s').data.data.magnitude.edges.values)

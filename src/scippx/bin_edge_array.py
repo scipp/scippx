@@ -34,6 +34,11 @@ def empty_like(prototype, dtype=None, order='K', subok=True, shape=None):
     return BinEdgeArray(edges)
 
 
+@implements(np.array_equal)
+def array_equal(a1, a2, equal_nan=False):
+    return np.array_equal(a1.edges, a2.edges, equal_nan=equal_nan)
+
+
 @implements(np.concatenate)
 def concatenate(args, axis=0, out=None, dtype=None, casting="same_kind"):
     assert out is None
@@ -90,7 +95,7 @@ class BinEdgeArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
 
     def center(self):
         if self.dtype == bool:
-            return np.logical_or(self.right, self. left)
+            return np.logical_or(self.right, self.left)
         return 0.5 * (self.right + self.left)
 
     @property

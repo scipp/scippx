@@ -10,7 +10,14 @@ def rewrap_result(wrap):
         def func(*args, **kwargs):
             # args and kwargs passed to `wrap` since it may need to call with same args
             # for extra_cols
-            return wrap(callable(*args, **kwargs), *args, **kwargs)
+            result = callable(*args, **kwargs)
+            if hasattr(result, 'shape'):
+                # Hack to work with `wrap` not created with `make_wrap` below
+                try:
+                    return wrap(result, *args, **kwargs)
+                except TypeError:
+                    return wrap(result)
+            return result
 
         return func
 
@@ -68,3 +75,14 @@ class ArrayAttrMixin:
 
     def __array_getattr__(self, name, wrap, unwrap):
         return self._forward_array_getattr_to_content(name, wrap, unwrap)
+
+
+class ArrayAccessor:
+
+    def __init__(self, array, wrap, unwrap):
+        self._array = array
+        self._wrap = wrap
+        self._unwrap = unwrap
+
+    def __getattr__(self, attr):
+        return rewrap_result(self._wrap)(getattr(self._array, attr))
