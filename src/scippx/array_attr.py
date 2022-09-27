@@ -62,8 +62,6 @@ class ArrayAttrMixin:
         if isinstance(content, tuple):
             content, *extra_cols = content
             wrap_ = make_wrap(wrap_, name, extra_cols)
-        else:
-            wrap_ = make_wrap(wrap_, name)
         if hasattr(content, '__array_property__'):
             return content.__array_property__(name, wrap=wrap_, unwrap=unwrap_)
         raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
