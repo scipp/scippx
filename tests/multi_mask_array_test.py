@@ -33,3 +33,5 @@ def test_heterogenous_content_array_attr_only_on_data():
     mma = sx.MultiMaskArray(data, masks={'mask': mask})
     units = mma.units
     assert isinstance(units, Unit)
+    magnitude = mma.magnitude
+    assert isinstance(magnitude, sx.MultiMaskArray)
