@@ -1,6 +1,7 @@
 import numpy as np
 import scippx as sx
 import pytest
+from scippx.array_property import Unit, Quantity
 
 
 def test_basics():
@@ -59,6 +60,24 @@ def test_dot():
     vec = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
     result = np.dot(vec, vec)
     np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
+
+
+def test_dot_quantity_of_vector():
+    elems = np.array([[1, 2, 3], [4, 5, 6]])
+    vec = sx.VectorArray(elems, ['x', 'y', 'z'])
+    vec =  Quantity(vec, 'm')
+    result = np.dot(vec, vec)
+    np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
+    assert result.units == Unit('m**2')
+
+
+def test_dot_vector_of_quantity():
+    elems = np.array([[1, 2, 3], [4, 5, 6]])
+    elems =  Quantity(elems, 'm')
+    vec = sx.VectorArray(elems, ['x', 'y', 'z'])
+    result = np.dot(vec, vec)
+    np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
+    assert result.units == Unit('m**2')
 
 
 def test_setitem():

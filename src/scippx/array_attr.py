@@ -85,4 +85,5 @@ class ArrayAccessor:
         self._unwrap = unwrap
 
     def __getattr__(self, attr):
+        # TODO Pass unwrap to rewrap_result to it can unwrap args/kwargs
         return rewrap_result(self._wrap)(getattr(self._array, attr))

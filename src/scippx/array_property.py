@@ -25,6 +25,8 @@ def _quantity_array_getattr(self, name, wrap, unwrap):
         return self.units
     if name == 'magnitude':
         return wrap(self.magnitude)
+    # Example of a generic accessor, providing access to the full interface of this
+    # class.
     if name == 'quantity':
         return ArrayAccessor(self, wrap, unwrap)
     if hasattr(self.magnitude, '__array_getattr__'):
