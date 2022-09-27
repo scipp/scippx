@@ -2,7 +2,6 @@ import numpy as np
 import scippx as sx
 import pytest
 import xarray as xr
-import pint
 import dask
 from numpy.testing import assert_array_equal
 from scippx import array_property
