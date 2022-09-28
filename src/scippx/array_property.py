@@ -5,13 +5,15 @@ import pint
 import xarray as xr
 import dask
 from .array_index import ArrayIndex
-from .array_attr import ArrayAccessor
+from .array_attr import ArrayAccessor, rewrap_result
 
 ureg = pint.UnitRegistry(force_ndarray_like=True)
 Unit = ureg.Unit
 Quantity = ureg.Quantity
 
+
 class QuantityAccessor:
+
     def __init__(self, quantity, wrap, unwrap):
         self._quantity = quantity
         self._wrap = wrap
@@ -19,6 +21,7 @@ class QuantityAccessor:
 
     def __getattr__(self, attr):
         return rewrap_result(self._wrap)(getattr(self._quantity, attr))
+
 
 def _quantity_array_getattr(self, name, wrap, unwrap):
     if name == 'units':
@@ -33,6 +36,13 @@ def _quantity_array_getattr(self, name, wrap, unwrap):
         wrap_ = lambda x: wrap(self.__class__(x, self.units))
         unwrap_ = unwrap  # TODO strip and handle units
         return self.magnitude.__array_getattr__(name, wrap=wrap_, unwrap=unwrap_)
+    if name == 'transform_content':
+
+        def func(f, *args, **kwargs):
+            return f(self.magnitude, *args, **kwargs)
+
+        return rewrap_result(wrap)(func)
+
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
@@ -108,5 +118,6 @@ def DataArray(*, dims, data, coords):
     var = xr.Variable(dims=dims, data=data)
     da = xr.DataArray(var, coords=coords, indexes={}, fastpath=True)
     for dim in list(da.dims):
-        da = da.set_xindex(dim, ArrayIndex)
+        if dim in coords:
+            da = da.set_xindex(dim, ArrayIndex)
     return da

@@ -1,7 +1,7 @@
 import numpy as np
 import scippx as sx
 import pytest
-from scippx.array_property import Unit, Quantity
+from scippx.array_property import Unit, Quantity, DataArray
 
 
 def test_basics():
@@ -65,7 +65,7 @@ def test_dot():
 def test_dot_quantity_of_vector():
     elems = np.array([[1, 2, 3], [4, 5, 6]])
     vec = sx.VectorArray(elems, ['x', 'y', 'z'])
-    vec =  Quantity(vec, 'm')
+    vec = Quantity(vec, 'm')
     result = np.dot(vec, vec)
     np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
     assert result.units == Unit('m**2')
@@ -73,7 +73,7 @@ def test_dot_quantity_of_vector():
 
 def test_dot_vector_of_quantity():
     elems = np.array([[1, 2, 3], [4, 5, 6]])
-    elems =  Quantity(elems, 'm')
+    elems = Quantity(elems, 'm')
     vec = sx.VectorArray(elems, ['x', 'y', 'z'])
     result = np.dot(vec, vec)
     np.testing.assert_array_equal(result, [1 + 4 + 9, 16 + 25 + 36])
@@ -97,3 +97,19 @@ def test_setitem_incompatible_field_names_raises_ValueError():
 def test_getitem_ellipsis():
     vectors = sx.VectorArray(np.array([[1, 2, 3], [4, 5, 6]]), ['x', 'y', 'z'])
     np.testing.assert_array_equal(vectors[..., 1], [4, 5, 6])
+
+
+def test_gradient():
+    data = np.arange(4 * 5 * 6).reshape((4, 5, 6))
+    data = Quantity(data, 'K')
+
+    x = Quantity(np.linspace(0.1, 0.2, 4), 'm')
+    y = Quantity(np.linspace(0.1, 0.2, 5), 'm')
+    z = Quantity(np.linspace(0.1, 0.2, 6), 'm')
+    da = DataArray(dims=('x', 'y', 'z'), data=data, coords={'x': x, 'y': y, 'z': z})
+    # This inserts a new VectorArray layer as the innermost duck array
+    grad = sx.gradient(da)
+    assert grad.units == Unit('K/m')
+    assert 'x' in grad.fields
+    assert 'y' in grad.fields
+    assert 'z' in grad.fields
