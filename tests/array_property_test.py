@@ -100,6 +100,23 @@ def test_dask():
     assert 'mask1' in da.masks
 
 
+def test_dask_data_and_mask():
+    array = dask.array.asarray(np.arange(15).reshape(5, 3), chunks=(2, 3))
+    vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    mask = dask.array.asarray(np.array([False, False, True, False]), chunks=(2,))
+    masked = sx.MultiMaskArray(data,
+                               masks={'mask1': mask})
+    da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
+    # This does not work due to logic in ArrayAccessor and make_wrap
+    # result = da.dask.compute()
+    result = da.xcompute()
+    assert result.dims == ('x', )
+    assert result.units == Unit('m/s')
+    assert 'mask1' in da.masks
+
+
 # np.empty(...., like=...) cannot cope with nesting (tried edit in
 # dask/array/core.py:5288). Changing to use np.empty_like works!
 def test_dask_chunked_masks():

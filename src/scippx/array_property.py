@@ -97,6 +97,8 @@ def _dask_array_property(self, name, wrap, unwrap):
     if name == 'xcompute':
         from scippx.array_attr import rewrap_result
         return rewrap_result(wrap)(self.compute)
+    if name == 'dask':
+        return ArrayAccessor(self, wrap, unwrap)
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
@@ -104,6 +106,11 @@ setattr(dask.array.core.Array, '__array_getattr__', _dask_array_property)
 
 
 def DataArray(*, dims, data, coords):
+    """
+    Create xarray.DataArray with ArrayIndex coords.
+
+    This allows for coords with units and prevents automatic alignment.
+    """
     coords = {
         key: xr.Variable(dims=(key, ), data=values)
         for key, values in coords.items()
