@@ -84,6 +84,15 @@ class ArrayAccessor:
         self._wrap = wrap
         self._unwrap = unwrap
 
+    def pipe(self, func, *args, **kwargs):
+        """
+        Apply `func` to array and rewrap result.
+
+        This allows for extending the functionality without adding new methods to the
+        array implementation.
+        """
+        return rewrap_result(self._wrap)(func)(self._array, *args, **kwargs)
+
     def __getattr__(self, attr):
         # TODO Pass unwrap to rewrap_result to it can unwrap args/kwargs
         return rewrap_result(self._wrap)(getattr(self._array, attr))

@@ -2,6 +2,7 @@ import numpy as np
 import scippx as sx
 import pytest
 from scippx.array_property import Unit, Quantity, DataArray
+import xarray as xr
 
 
 def test_basics():
@@ -109,6 +110,8 @@ def test_gradient():
     da = DataArray(dims=('x', 'y', 'z'), data=data, coords={'x': x, 'y': y, 'z': z})
     # This inserts a new VectorArray layer as the innermost duck array
     grad = sx.gradient(da)
+    assert isinstance(grad, xr.DataArray)
+    assert grad.dims == da.dims
     assert grad.units == Unit('K/m')
     assert 'x' in grad.fields
     assert 'y' in grad.fields

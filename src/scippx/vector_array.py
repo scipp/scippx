@@ -193,27 +193,25 @@ class VectorArray(numpy.lib.mixins.NDArrayOperatorsMixin, ArrayAttrMixin):
         return self._forward_array_getattr_to_content(name, wrap, unwrap)
 
 
-def _gradient(values, units, coords, dims):
+def _quantity_gradient(quantity, coords, dims):
     # Bypass pint's np.gradient as it produces wrong units, see
     # https://github.com/hgrecco/pint/issues/1591
-    coord_units = [x.units for x in coords]
-    coord_units = set(coord_units)
+    coord_units = set([x.units for x in coords])
     if len(coord_units) != 1:
         raise NotImplementedError("Require VectorArray with different component units")
     coord_units = next(iter(coord_units))
     coords = [x.magnitude for x in coords]
-    derivs = np.gradient(values, *coords)
+    derivs = np.gradient(quantity.magnitude, *coords)
     grad = np.stack(derivs, axis=-1)
-    return Quantity(VectorArray(grad, dims), units / coord_units)
+    return Quantity(VectorArray(grad, dims), quantity.units / coord_units)
 
 
 def gradient(f):
     dims = f.dims
     coords = [f.coords[dim].data for dim in dims]
-    # This targets the innermost 'content'. How can we target a specific layer or its
-    # content? There is also a shortcoming here related to masks: If we have a
-    # MultiMaskArray layer, it should intercept and modify the masks. `numpy.ma` does
-    # this automatically, but if we implement a custom operation for an arbitrary
-    # array it is not clear how to avoid requiring changes/support in multiple
-    # duck-array implementations.
-    return f.transform_content(_gradient, f.units, coords, dims)
+    # This targets the `Quantity` layer. There is a shortcoming here related to masks,
+    # or potential other intermediate layers: If we have a MultiMaskArray layer, it
+    # should intercept and modify the masks. `numpy.ma` does this automatically, but if
+    # we implement a custom operation for an arbitrary array it is not clear how to
+    # avoid requiring changes/support in multiple duck-array implementations.
+    return f.quantity.pipe(_quantity_gradient, coords, dims)

@@ -36,13 +36,6 @@ def _quantity_array_getattr(self, name, wrap, unwrap):
         wrap_ = lambda x: wrap(self.__class__(x, self.units))
         unwrap_ = unwrap  # TODO strip and handle units
         return self.magnitude.__array_getattr__(name, wrap=wrap_, unwrap=unwrap_)
-    if name == 'transform_content':
-
-        def func(f, *args, **kwargs):
-            return f(self.magnitude, *args, **kwargs)
-
-        return rewrap_result(wrap)(func)
-
     raise AttributeError(f"{self.__class__} object has no attribute '{name}'")
 
 
