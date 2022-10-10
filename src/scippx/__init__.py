@@ -9,10 +9,9 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "0.0.0"
 
+from .array_index import ArrayIndex
 from .bin_edge_array import BinEdgeArray
 from .list_array import ListArray
 from .multi_mask_array import MultiMaskArray
 from .uncertain_array import UncertainArray
 from .vector_array import VectorArray, gradient
-from . import scipp
-from .array_index import ArrayIndex

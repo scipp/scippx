@@ -1,5 +1,6 @@
 # Adapted from https://notebooksharing.space/view/48ad86aed90f7588c9a475be6747528d87f975cb3317e5bd94265ffaa5a2478f#displayOptions=
-# Needs benbovy/add-set-xindex-and-drop-indexes
+# (by benbovy)
+# Needs xarray/main
 
 from __future__ import annotations
 
