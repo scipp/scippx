@@ -26,7 +26,7 @@ The tests in `test/array_property_test.py` demonstrate the main idea.
 Central parts of the implementation are found in `src/scippx/array_property.py` and `src/scippx/array_attr.py`.
 The following concepts are demonstrated:
 
-- Mechanism for letting duck-array implementation expose properties or methods on all wrapping levels.
+- Mechanism for letting duck-array implementations expose properties or methods *on all wrapping levels*.
   The mechanism ensures that important properties from higher levels in the duck array stack are not dropped.
   For example, accessing the `magnitude` property of a `pint.Quantity` layer does *not* lose information about dimension labels of the wrapping `xr.Variable`.
 - Mechanism for modifying or removing duck-array layers.
