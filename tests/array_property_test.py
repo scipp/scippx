@@ -62,7 +62,7 @@ def test_mask_array_masks_setitem():
                                masks={'mask1': np.array([False, False, True, False])})
     da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
 
-    with pytest.raises(ValueError):  # Not a xr.Variable
+    with pytest.raises(ValueError):  # Not an xr.Variable
         da.masks['new_mask'] = np.array([False, False, True, False])
 
     with pytest.raises(ValueError):  # Bad dims
@@ -83,7 +83,7 @@ def test_setattr():
     da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
 
     # TODO We probably need a separate __array_setattr__ for this
-    # da.magnitude += 2
+    # da.magnitude *= 2
 
 
 def test_dask():
@@ -105,9 +105,8 @@ def test_dask_data_and_mask():
     vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
     edges = sx.BinEdgeArray(vectors)
     data = Quantity(edges, 'meter/second')
-    mask = dask.array.asarray(np.array([False, False, True, False]), chunks=(2,))
-    masked = sx.MultiMaskArray(data,
-                               masks={'mask1': mask})
+    mask = dask.array.asarray(np.array([False, False, True, False]), chunks=(2, ))
+    masked = sx.MultiMaskArray(data, masks={'mask1': mask})
     da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
     # This does not work due to logic in ArrayAccessor and make_wrap
     # result = da.dask.compute()
@@ -164,3 +163,17 @@ def test_quantity_accessor():
     np.testing.assert_array_equal(
         result.data.data.magnitude.edges.values,
         da.quantity.to('km/h').quantity.to('m/s').data.data.magnitude.edges.values)
+
+
+def test_array_accessor_pipe():
+    array = np.arange(15).reshape(5, 3)
+    vectors = sx.VectorArray(array, ['vx', 'vy', 'vz'])
+    edges = sx.BinEdgeArray(vectors)
+    data = Quantity(edges, 'meter/second')
+    masked = sx.MultiMaskArray(data,
+                               masks={'mask1': np.array([False, False, True, False])})
+    da = xr.DataArray(dims=('x', ), data=masked, coords={'x': np.arange(4)})
+    result = da.quantity.pipe(lambda x: x + x)
+    assert isinstance(result, xr.DataArray)
+    assert result.units == Unit('m/s')
+    assert 'mask1' in result.masks

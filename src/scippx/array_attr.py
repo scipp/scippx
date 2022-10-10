@@ -59,7 +59,6 @@ class ArrayAttrMixin:
 
     def __getattr__(self, name):
         # Top-level, wrap is no-op
-        #TODO __array_getattr_
         return self.__array_getattr__(name, wrap=lambda x: x, unwrap=lambda x: x)
 
     def _forward_array_getattr_to_content(self, name, wrap, unwrap):
